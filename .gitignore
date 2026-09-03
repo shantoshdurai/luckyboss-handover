@@ -1,4 +1,4 @@
-﻿# Laravel
+# Laravel
 website/vendor/
 website/node_modules/
 website/.env
@@ -16,3 +16,12 @@ Thumbs.db
 .idea/
 .vscode/
 *.iml
+
+# Flutter
+apps/**/.dart_tool/
+apps/**/build/
+apps/**/.flutter-plugins*
+apps/**/.pub-cache/
+apps/**/.pub/
+apps/**/.gradle/
+apps/**/.kotlin/
