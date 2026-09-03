@@ -82,32 +82,6 @@
     .lb-scroll-cue svg { animation: lb-drift 2.4s ease-in-out infinite; }
     .lb-scroll-cue:hover svg { animation-duration: 1.1s; }
 
-    /* The rolling placeholder. It swaps text at the midpoint of the fade so
-       the change is never visible as a jump. */
-    @keyframes lb-roll {
-        0%, 8%    { opacity: 0; transform: translateY(6px); }
-        18%, 82%  { opacity: 1; transform: none; }
-        92%, 100% { opacity: 0; transform: translateY(-6px); }
-    }
-    .lb-ghost {
-        position: absolute; left: 48px; top: 50%; transform: translateY(-50%);
-        pointer-events: none; font-size: 16px; color: #9AA8BA;
-        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-        max-width: calc(100% - 64px);
-        user-select: none;
-        transition: opacity .15s ease;
-    }
-    .lb-ghost span { display: inline-block; animation: lb-roll 3s ease-in-out infinite; }
-
-    /* Instantly hide ghost placeholder when input is focused or has content so typing never overlaps */
-    #keyword:focus ~ .lb-ghost,
-    #keyword:not(:placeholder-shown) ~ .lb-ghost,
-    .lb-ghost.lb-hidden {
-        display: none !important;
-        opacity: 0 !important;
-        visibility: hidden !important;
-        pointer-events: none !important;
-    }
 
     .lb-arrow { transition: transform .3s cubic-bezier(.22,.61,.36,1); }
     .lb-card:hover .lb-arrow { transform: translateX(5px); }
@@ -139,7 +113,7 @@
         .js-reveal .lb-reveal { opacity: 1; transform: none; transition: none; }
         .lb-card, .lb-card::after, .lb-tile, .lb-arrow, .lb-count,
         .lb-shot, .lb-post .lb-spine, .lb-post h3 { transition: none; }
-        .lb-scroll-cue svg, .lb-ghost span { animation: none; }
+        .lb-scroll-cue svg { animation: none; }
         .lb-card:hover { transform: none; }
     }
 </style>
@@ -194,60 +168,17 @@
             document.querySelectorAll('.lb-reveal:not(.lb-in)').forEach(reveal);
         }, 3000);
 
-        // Rolling search suggestions, taken from the trades actually in the
-        // catalogue rather than a hardcoded list, so it can never advertise a
-        // sector with nothing in it.
-        var ghost = document.querySelector('[data-ghost]');
-        var input = document.querySelector('[data-rolling-placeholder]');
-
-        if (ghost && input) {
-            var terms = @json($rollingTerms ?? []);
+        // Rolling search suggestions on native placeholder attribute
+        var input = document.getElementById('keyword');
+        var terms = @json($rollingTerms ?? []);
+        if (input && terms && terms.length) {
             var i = 0;
-            var inner = ghost.querySelector('span');
-
-            var hideGhost = function () {
-                ghost.classList.add('lb-hidden');
-                ghost.style.display = 'none';
-            };
-
-            var showGhostIfNeeded = function () {
+            setInterval(function () {
                 if (document.activeElement !== input && (!input.value || input.value.trim() === '')) {
-                    ghost.classList.remove('lb-hidden');
-                    ghost.style.display = '';
-                    ghost.style.opacity = '1';
-                } else {
-                    hideGhost();
-                }
-            };
-
-            input.addEventListener('focus', hideGhost);
-            input.addEventListener('input', function () {
-                if (input.value && input.value.trim().length > 0) {
-                    hideGhost();
-                } else if (document.activeElement !== input) {
-                    showGhostIfNeeded();
-                }
-            });
-            input.addEventListener('keydown', hideGhost);
-            input.addEventListener('blur', function () {
-                showGhostIfNeeded();
-            });
-
-            // Initial check on page load
-            if (input.value && input.value.trim().length > 0) {
-                hideGhost();
-            }
-
-            if (terms && terms.length && inner) {
-                setInterval(function () {
-                    if (document.activeElement === input || (input.value && input.value.trim().length > 0)) {
-                        hideGhost();
-                        return;
-                    }
                     i = (i + 1) % terms.length;
-                    inner.textContent = terms[i];
-                }, 3000);
-            }
+                    input.setAttribute('placeholder', "Search '" + terms[i] + "' or any keyword...");
+                }
+            }, 3000);
         }
     })();
 </script>
@@ -283,33 +214,24 @@
                 Pick one and we will take you straight to it.
             </p>
 
-            {{-- The search sits at the centre of the screen because it is the
-                 thing a returning candidate came for. The placeholder cycles
-                 through real trades from our own catalogue rather than sitting
-                 static — the job seeker app does the same on its search bar,
-                 and it is what tells somebody what they are allowed to type. --}}
             <form action="{{ route('jobs.index') }}" method="GET"
-                  class="lb-enter lb-d3 flex items-stretch gap-2 max-w-2xl mx-auto w-full mb-8">
+                  class="lb-enter lb-d3"
+                  style="display:flex;align-items:stretch;gap:12px;max-width:680px;width:100%;margin:0 auto 32px auto;">
                 <label for="keyword" class="sr-only">Search jobs</label>
-                <div class="relative flex-1">
-                    <svg class="w-5 h-5 absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none"
-                         fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" style="color:#9AA8BA;">
+                <div style="position:relative;flex:1;display:flex;align-items:center;">
+                    <svg style="position:absolute;left:18px;top:50%;transform:translateY(-50%);width:22px;height:22px;color:#9AA8BA;pointer-events:none;z-index:2;"
+                         fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z"/>
                     </svg>
-                    <input id="keyword" name="keyword" type="text" autocomplete="off"
+                    <input id="keyword" name="keyword" type="text" autocomplete="off" spellcheck="false"
                            value="{{ request('keyword') }}"
-                           data-rolling-placeholder
-                           placeholder=" "
-                           class="w-full rounded-2xl pl-12 pr-4 py-4 text-base font-medium outline-none transition-all"
-                           style="border:1.5px solid #E4EAF2;background:#fff;color:#031F49;font-size:16px;line-height:1.5;"
+                           placeholder="Search by job title, trade, or keyword (e.g. Warehouse Supervisor)..."
+                           style="width:100%;height:58px;padding-left:52px;padding-right:20px;border-radius:16px;border:1.5px solid #E4EAF2;background:#fff;color:#031F49;font-size:16px;font-weight:500;outline:none;box-sizing:border-box;transition:border-color 0.2s,box-shadow 0.2s;"
                            onfocus="this.style.borderColor='#18A66A';this.style.boxShadow='0 0 0 4px rgba(24,166,106,.15)'"
                            onblur="this.style.borderColor='#E4EAF2';this.style.boxShadow='none'">
-                    {{-- A real element rather than the placeholder attribute:
-                         fades out instantly on focus or keydown so typing is clean and uninhibited. --}}
-                    <span class="lb-ghost" data-ghost aria-hidden="true"><span>Warehouse Supervisor</span></span>
                 </div>
-                <button type="submit" class="rounded-2xl px-7 font-bold text-[15px] transition-all"
-                        style="background:#031F49;color:#fff;"
+                <button type="submit"
+                        style="height:58px;padding:0 32px;border-radius:16px;background:#031F49;color:#fff;font-size:15px;font-weight:700;border:none;cursor:pointer;flex-shrink:0;transition:background 0.2s;"
                         onmouseover="this.style.background='#052a63'"
                         onmouseout="this.style.background='#031F49'">
                     Search
