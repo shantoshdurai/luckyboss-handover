@@ -7,18 +7,20 @@
     }" 
     x-init="scrolled = (window.pageYOffset > 20)"
     @scroll.window="scrolled = (window.pageYOffset > 20)"
-    :class="scrolled ? 'bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-md' : 'bg-white border-b border-slate-200/90 shadow-xs'"
+    :class="scrolled ? 'bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-md' : 'bg-white border-b border-slate-200 shadow-xs'"
     class="sticky top-0 z-50 transition-all duration-300 text-slate-800"
 >
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="flex items-center justify-between min-h-16 sm:min-h-20 lg:min-h-24 gap-3 sm:gap-4">
-            {{-- Brand Logo (Prominent & Professional Display) --}}
-            <a href="{{ route('home') }}" class="flex items-center py-2 flex-shrink-0 group focus:outline-none">
-                <div class="relative py-1 flex items-center bg-gradient-to-r from-slate-50 to-white rounded-lg px-1.5 sm:px-2">
+        <div class="flex items-center justify-between gap-4 transition-all duration-300"
+             :style="scrolled ? 'min-height: 72px; padding: 8px 0;' : 'min-height: 88px; padding: 12px 0;'">
+            {{-- Brand Logo (Prominent, High-Visibility Display) --}}
+            <a href="{{ route('home') }}" class="flex items-center flex-shrink-0 group focus:outline-none" style="padding: 2px 0;">
+                <div class="relative flex items-center bg-white rounded-xl">
                     <img 
                         src="{{ asset($branding['logo_url']) }}" 
                         alt="Luckyboss Employment Agency Pte. Ltd" 
-                        class="h-12 sm:h-16 lg:h-20 w-auto max-w-[210px] sm:max-w-[260px] lg:max-w-[300px] object-contain transition-all duration-300 group-hover:scale-105"
+                        class="w-auto object-contain transition-all duration-300 group-hover:scale-102"
+                        :style="scrolled ? 'height: 48px; max-height: 54px; max-width: 260px;' : 'height: 60px; max-height: 68px; max-width: 320px;'"
                         loading="eager"
                     >
                 </div>

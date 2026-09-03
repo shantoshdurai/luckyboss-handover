@@ -91,11 +91,23 @@
     }
     .lb-ghost {
         position: absolute; left: 48px; top: 50%; transform: translateY(-50%);
-        pointer-events: none; font-size: 15px; color: #9AA8BA;
+        pointer-events: none; font-size: 16px; color: #9AA8BA;
         white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
         max-width: calc(100% - 64px);
+        user-select: none;
+        transition: opacity .15s ease;
     }
     .lb-ghost span { display: inline-block; animation: lb-roll 3s ease-in-out infinite; }
+
+    /* Instantly hide ghost placeholder when input is focused or has content so typing never overlaps */
+    #keyword:focus ~ .lb-ghost,
+    #keyword:not(:placeholder-shown) ~ .lb-ghost,
+    .lb-ghost.lb-hidden {
+        display: none !important;
+        opacity: 0 !important;
+        visibility: hidden !important;
+        pointer-events: none !important;
+    }
 
     .lb-arrow { transition: transform .3s cubic-bezier(.22,.61,.36,1); }
     .lb-card:hover .lb-arrow { transform: translateX(5px); }
@@ -190,26 +202,52 @@
 
         if (ghost && input) {
             var terms = @json($rollingTerms ?? []);
+            var i = 0;
+            var inner = ghost.querySelector('span');
 
-            if (terms.length) {
-                var i = 0;
-                var inner = ghost.querySelector('span');
+            var hideGhost = function () {
+                ghost.classList.add('lb-hidden');
+                ghost.style.display = 'none';
+            };
 
+            var showGhostIfNeeded = function () {
+                if (document.activeElement !== input && (!input.value || input.value.trim() === '')) {
+                    ghost.classList.remove('lb-hidden');
+                    ghost.style.display = '';
+                    ghost.style.opacity = '1';
+                } else {
+                    hideGhost();
+                }
+            };
+
+            input.addEventListener('focus', hideGhost);
+            input.addEventListener('input', function () {
+                if (input.value && input.value.trim().length > 0) {
+                    hideGhost();
+                } else if (document.activeElement !== input) {
+                    showGhostIfNeeded();
+                }
+            });
+            input.addEventListener('keydown', hideGhost);
+            input.addEventListener('blur', function () {
+                showGhostIfNeeded();
+            });
+
+            // Initial check on page load
+            if (input.value && input.value.trim().length > 0) {
+                hideGhost();
+            }
+
+            if (terms && terms.length && inner) {
                 setInterval(function () {
-                    if (input.value) return;              // never fight a typist
+                    if (document.activeElement === input || (input.value && input.value.trim().length > 0)) {
+                        hideGhost();
+                        return;
+                    }
                     i = (i + 1) % terms.length;
                     inner.textContent = terms[i];
                 }, 3000);
-
-                // Restarting the animation on each swap keeps text and fade in
-                // step; without it they drift apart within a minute.
-                inner.addEventListener('animationiteration', function () {});
             }
-
-            var hide = function () { ghost.style.display = input.value ? 'none' : ''; };
-            input.addEventListener('input', hide);
-            input.addEventListener('focus', function () { ghost.style.opacity = '.5'; });
-            input.addEventListener('blur', function () { ghost.style.opacity = ''; hide(); });
         }
     })();
 </script>
@@ -228,7 +266,7 @@
          you to scroll.
     ═══════════════════════════════════════════════════════════════ --}}
     <section class="relative flex flex-col"
-             style="background:#F7F9FC; min-height:calc(100vh - 80px);">
+             style="background:#F7F9FC; min-height:calc(100vh - 88px);">
 
         <div class="container mx-auto px-6 max-w-4xl flex-1 flex flex-col justify-center text-center py-10">
 
@@ -258,19 +296,16 @@
                          fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" style="color:#9AA8BA;">
                         <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z"/>
                     </svg>
-                    <input id="keyword" name="keyword" type="search" autocomplete="off"
+                    <input id="keyword" name="keyword" type="text" autocomplete="off"
                            value="{{ request('keyword') }}"
                            data-rolling-placeholder
-                           placeholder=""
-                           class="w-full rounded-2xl pl-12 pr-4 py-4 text-[15px] outline-none transition-all"
-                           style="border:1px solid #E4EAF2;background:#fff;color:#031F49;"
-                           onfocus="this.style.borderColor='#18A66A';this.style.boxShadow='0 0 0 3px rgba(24,166,106,.14)'"
+                           placeholder=" "
+                           class="w-full rounded-2xl pl-12 pr-4 py-4 text-base font-medium outline-none transition-all"
+                           style="border:1.5px solid #E4EAF2;background:#fff;color:#031F49;font-size:16px;line-height:1.5;"
+                           onfocus="this.style.borderColor='#18A66A';this.style.boxShadow='0 0 0 4px rgba(24,166,106,.15)'"
                            onblur="this.style.borderColor='#E4EAF2';this.style.boxShadow='none'">
                     {{-- A real element rather than the placeholder attribute:
-                         a placeholder cannot be animated, and swapping its text
-                         on a timer reads as a glitch. This fades out, changes,
-                         and fades back in, and it disappears the moment anyone
-                         types. --}}
+                         fades out instantly on focus or keydown so typing is clean and uninhibited. --}}
                     <span class="lb-ghost" data-ghost aria-hidden="true"><span>Warehouse Supervisor</span></span>
                 </div>
                 <button type="submit" class="rounded-2xl px-7 font-bold text-[15px] transition-all"
