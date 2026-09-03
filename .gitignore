@@ -1,0 +1,18 @@
+﻿# Laravel
+website/vendor/
+website/node_modules/
+website/.env
+website/.env.backup
+website/.env.production
+website/.phpunit.result.cache
+website/storage/logs/*.log
+website/storage/framework/cache/data/*
+website/storage/framework/sessions/*
+website/storage/framework/views/*
+
+# OS & IDE
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.iml

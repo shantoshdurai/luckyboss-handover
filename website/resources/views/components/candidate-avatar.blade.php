@@ -1,0 +1,3 @@
+@props(['candidate', 'size' => 42])
+@php($photo = $candidate?->candidateProfile?->profile_photo_path)
+<span style="display:inline-flex;align-items:center;gap:9px;white-space:nowrap"><span style="display:grid;place-items:center;width:{{ $size }}px;height:{{ $size }}px;flex:0 0 {{ $size }}px;border-radius:50%;overflow:hidden;background:#dbeafe;color:#1769e0;font-weight:700;border:2px solid #93c5fd;font-size:{{ max(12, (int) $size / 2.4) }}px">@if($photo)<img src="{{ asset($photo) }}" alt="{{ $candidate->name }}" style="width:100%;height:100%;object-fit:cover">@else{{ strtoupper(substr($candidate->name ?? '?', 0, 1)) }}@endif</span><strong>{{ $candidate->name }}</strong></span>

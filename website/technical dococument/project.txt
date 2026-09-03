@@ -1,0 +1,2914 @@
+# LUCKY BOSS PORTAL
+
+## AI-Powered Recruitment Platform – Detailed Website, Mobile App, Admin Control & Workflow Specification
+
+### Proposed Technology
+
+* Backend / Admin Portal: Laravel
+* Public Website: Laravel / responsive web frontend
+* Mobile Application: Flutter for Android & iOS
+* Database: MySQL
+* AI Layer: OpenAI APIs + Resume Parser + Embeddings + Vector Search
+* Cloud: AWS / Google Cloud
+* Notifications: Firebase
+* Email: SendGrid / Mailgun
+* WhatsApp: WhatsApp Cloud API
+* Voice: Twilio Voice API
+* Payments: Razorpay / Stripe / supported regional gateways
+* Calendar: Google Calendar API
+* Multi-Currency: SGD, INR, MYR/Ringgit and additional currencies configurable by Admin
+
+---
+
+# 1. PROJECT VISION
+
+Lucky Boss Portal will be a complete AI-enabled recruitment ecosystem connecting:
+
+1. Job Seekers
+2. Employers / Companies
+3. Recruitment Administrators
+4. Internal Recruitment Team
+5. External Job Data Sources
+6. AI Matching & Automation Services
+
+The platform will be developed so that AI and paid third-party APIs are not permanently hard-coded into the business process.
+
+Every major paid tool or AI feature will have an Admin ON/OFF control.
+
+Example:
+
+OpenAI Resume AI: ON
+→ AI Resume Builder and AI Resume Analysis are shown.
+
+OpenAI Resume AI: OFF
+→ Those AI features disappear from Website/App and users continue with manual resume functionality.
+
+This approach protects the platform from depending entirely on third-party providers and allows the company to control operational costs.
+
+---
+
+# 2. CORE PLATFORM STRUCTURE
+
+The system will contain three major interfaces.
+
+### A. Super Admin / Admin Portal
+
+Central control system for:
+
+* Companies
+* Employers
+* Job Seekers
+* Jobs
+* Job Categories
+* Packages
+* Subscriptions
+* Payments
+* Paid Jobs
+* AI Features
+* API Integrations
+* Third-Party Jobs
+* Candidate Database
+* Employer Permissions
+* Job Seeker Permissions
+* Blogs
+* Home Page
+* Slider
+* Job Highlights
+* Notifications
+* Offer Letter Templates
+* Interview Templates
+* Email Templates
+* Currency
+* Reports
+* Analytics
+* Application Settings
+
+### B. Employer Portal
+
+Companies can:
+
+* Register
+* Subscribe to packages
+* Create employer users
+* Post jobs
+* View candidates
+* View AI-match candidates
+* Search candidate database
+* View applicants
+* Communicate with candidates
+* Schedule interviews
+* Send interview letters
+* Send offer letters
+* Track recruitment
+* Renew package
+* View billing
+* View subscription usage
+* View recruitment analytics
+
+### C. Job Seeker Portal
+
+Candidates can:
+
+* Quick Register
+* Search jobs
+* Apply for jobs
+* Create resume
+* Upload resume
+* Complete profile
+* Receive AI job recommendations
+* View application status
+* View matching jobs
+* View external jobs
+* Attend interview process
+* Receive notifications
+* View paid-job purchase history
+* Manage account
+
+All major functions will be available through both Website and Flutter Mobile Application wherever applicable.
+
+---
+
+# 3. ADMIN-CONTROLLED FEATURE FLAG SYSTEM
+
+One of the most important components will be the Feature Control Manager.
+
+The Admin can enable or disable functionality without modifying the application code.
+
+Example controls:
+
+| Feature                   | Admin Control |
+| ------------------------- | ------------- |
+| OpenAI Integration        | ON/OFF        |
+| AI Resume Builder         | ON/OFF        |
+| AI Resume Matching        | ON/OFF        |
+| AI Job Recommendations    | ON/OFF        |
+| AI Chat Assistant         | ON/OFF        |
+| AI Interview Assistant    | ON/OFF        |
+| AI Offer Letter Generator | ON/OFF        |
+| Resume Parser             | ON/OFF        |
+| Vector Search             | ON/OFF        |
+| Voice Interview           | ON/OFF        |
+| WhatsApp                  | ON/OFF        |
+| Email Automation          | ON/OFF        |
+| Push Notifications        | ON/OFF        |
+| Third-Party Jobs          | ON/OFF        |
+| Job Seeker Payment        | ON/OFF        |
+| Paid Job Applications     | ON/OFF        |
+| Employer Subscription     | ON/OFF        |
+| External Candidate Leads  | ON/OFF        |
+
+When a feature is OFF:
+
+* It will not be displayed on the website.
+* It will not be displayed inside the Flutter app.
+* API calls will not be made.
+* Users cannot access its URL/API directly.
+* The system will automatically fall back to available manual functionality where possible.
+
+---
+
+# 4. ADMIN API & PAID TOOL MANAGEMENT
+
+Admin will have a dedicated section:
+
+## Settings → API & AI Configuration
+
+Each integration will have:
+
+* Provider Name
+* API Key
+* Secret Key
+* Environment
+* Sandbox / Live
+* ON/OFF
+* Monthly Limit
+* Daily Limit
+* Usage Count
+* Estimated Cost
+* Last API Request
+* API Status
+* Error Log
+
+Example:
+
+OpenAI
+Status: ON
+Monthly Token Limit: 10,000,000
+Usage: 6,200,000
+Remaining: 3,800,000
+
+This gives management control over AI expenses.
+
+---
+
+# 5. COMPANY TYPE MASTER
+
+Admin can create different company classifications.
+
+Examples:
+
+* Recruitment Agency
+* Construction Company
+* Manufacturing Company
+* Logistics Company
+* Warehouse Company
+* Healthcare Company
+* Hospitality Company
+* IT Company
+* Retail Company
+* Domestic Worker Agency
+* Security Agency
+* Cleaning Company
+* Facility Management
+* SME
+* Enterprise
+* International Recruiter
+
+Each Company Type can have its own subscription plans.
+
+---
+
+# 6. COMPANY GRADE SYSTEM
+
+In addition to Company Type, Admin can classify companies using grades.
+
+Example:
+
+* Grade A
+* Grade B
+* Grade C
+* Premium
+* Enterprise
+* Corporate
+* Recruitment Agency
+* Government / Institutional
+
+Admin can manually assign:
+
+Company Type
+Company Grade
+Package
+
+This makes it possible to offer customized pricing to different companies.
+
+---
+
+# 7. EMPLOYER SUBSCRIPTION PACKAGE MANAGEMENT
+
+Admin can create unlimited packages.
+
+Example:
+
+### Starter Package
+
+* 5 Job Posts
+* 50 Candidate Views
+* 20 Resume Downloads
+* 1 Employer User
+* Email Support
+* 30 Days
+
+### Professional Package
+
+* 25 Job Posts
+* 500 Candidate Views
+* 250 Resume Downloads
+* 5 Employer Users
+* AI Candidate Matching
+* Interview Scheduler
+* 90 Days
+
+### Enterprise Package
+
+* Unlimited / Custom Job Posts
+* Advanced AI Search
+* Large Candidate Access
+* Multiple Employer Users
+* AI Interviews
+* API Integration
+* Analytics
+* Priority Support
+* Custom Validity
+
+Every feature can be configured package-wise.
+
+---
+
+# 8. PACKAGE CONFIGURATION
+
+Admin can control:
+
+* Package Name
+* Company Type
+* Company Grade
+* Country
+* Currency
+* Amount
+* Tax
+* Validity
+* Number of Job Posts
+* Number of Featured Jobs
+* Candidate View Limit
+* Resume Download Limit
+* Email Limit
+* WhatsApp Limit
+* AI Match Limit
+* AI Interview Limit
+* Employer User Limit
+* Job Highlight Limit
+* External Candidate Limit
+* Search Limit
+* Export Limit
+* API Access
+* Reports Access
+
+---
+
+# 9. MULTI-CURRENCY SYSTEM
+
+The platform will support multiple currencies.
+
+Initial examples:
+
+* SGD – Singapore Dollar
+* INR – Indian Rupee
+* MYR – Malaysian Ringgit
+
+Admin can add more currencies later.
+
+Each package can have separate pricing.
+
+Example:
+
+Professional Plan
+
+SGD: 299
+INR: 18,999
+MYR: 999
+
+Admin may define pricing manually instead of depending completely on live currency conversion.
+
+---
+
+# 10. EMPLOYER REGISTRATION WORKFLOW
+
+Employer visits:
+
+Website / App
+↓
+Company Registration
+↓
+Basic Company Information
+↓
+Select Company Type
+↓
+System identifies eligible packages
+↓
+Select Package
+↓
+Make Payment
+↓
+Subscription Activated
+↓
+Employer Dashboard Enabled
+
+Admin approval can optionally be required.
+
+---
+
+# 11. COMPANY INFORMATION
+
+Company profile may contain:
+
+* Company Name
+* Company Registration Number
+* Industry
+* Company Type
+* Grade
+* Address
+* Country
+* State
+* City
+* Postal Code
+* Website
+* Email
+* Phone
+* Contact Person
+* Company Logo
+* Company Description
+* Employee Strength
+* Supporting Documents
+
+Admin can verify the company.
+
+Statuses:
+
+* Pending
+* Verified
+* Rejected
+* Suspended
+
+---
+
+# 12. EMPLOYER ROLE-BASED ACCESS
+
+A company can create multiple internal users.
+
+Example roles:
+
+### Company Admin
+
+Full company access.
+
+### HR Manager
+
+* Jobs
+* Candidates
+* Interviews
+* Offers
+
+### Recruiter
+
+* Assigned Jobs
+* Candidate Search
+* Shortlisting
+* Communication
+
+### Interviewer
+
+* Assigned Interviews
+* Candidate Evaluation
+* Feedback
+
+### Finance
+
+* Subscription
+* Payments
+* Invoices
+
+Admin/Company Admin can define permissions.
+
+---
+
+# 13. PACKAGE EXPIRY RULE
+
+When the employer subscription expires:
+
+Employer can log in but access is restricted.
+
+They may see:
+
+"Your subscription has expired. Renew your package to continue accessing candidate and recruitment data."
+
+The employer will not be able to access protected historical recruitment records until renewal.
+
+Admin can configure whether certain basic information remains visible.
+
+Example allowed after expiry:
+
+* Company Profile
+* Subscription History
+* Invoice History
+* Renewal Page
+
+Restricted:
+
+* Candidate Contact Details
+* Resume Downloads
+* Candidate Database
+* Applicant Details
+* Interview Information
+* Recruitment Reports
+
+---
+
+# 14. JOB SEEKER TWO-STAGE REGISTRATION
+
+To reduce registration friction, candidate signup will happen in two stages.
+
+## Stage 1 – Quick Registration
+
+Required only:
+
+* Name
+* Email
+* Mobile Number
+* Password
+* Country
+
+Candidate can immediately start searching and applying.
+
+---
+
+# 15. INCOMPLETE PROFILE WARNING
+
+After login, candidate dashboard will prominently display:
+
+"Complete your resume/profile to improve your job opportunities and receive better job recommendations."
+
+Profile completion may display as:
+
+25% Completed
+45% Completed
+75% Completed
+100% Completed
+
+The system will encourage users to progressively complete their resume.
+
+---
+
+# 16. STAGE 2 – COMPLETE JOB SEEKER PROFILE
+
+Candidate can provide:
+
+### Personal Details
+
+* Full Name
+* Date of Birth
+* Gender if required
+* Nationality
+* Current Country
+* Current Location
+* Preferred Location
+* Mobile
+* Email
+* Profile Photo
+
+### Professional Details
+
+* Current Job Title
+* Job Category
+* Job Subcategory
+* Industry
+* Total Experience
+* Current Salary
+* Expected Salary
+* Notice Period
+* Availability
+
+### Employment History
+
+Multiple previous employments.
+
+### Education
+
+Multiple education records.
+
+### Skills
+
+Multiple skills.
+
+### Certifications
+
+Multiple certifications.
+
+### Languages
+
+Multiple languages.
+
+### Work Permit / Visa Information
+
+Where applicable.
+
+### Resume
+
+* Upload PDF/DOC
+* Manual Resume
+* AI Resume Builder
+
+---
+
+# 17. MANUAL RESUME + AI RESUME MODE
+
+## If AI Resume is OFF
+
+Candidate manually enters:
+
+* Summary
+* Skills
+* Experience
+* Education
+* Certifications
+* Career Objective
+* Preferred Jobs
+
+## If AI Resume is ON
+
+The candidate can optionally use:
+
+* AI Resume Summary
+* AI Career Objective
+* AI Skills Suggestion
+* AI Resume Improvement
+* AI Experience Rewriting
+* AI Profile Optimization
+
+Admin controls whether this service is:
+
+* Free
+* Package Based
+* Credit Based
+* Paid
+
+---
+
+# 18. RESUME PARSER WORKFLOW
+
+Candidate uploads Resume
+↓
+Resume Parser extracts information
+↓
+Skills identified
+↓
+Experience identified
+↓
+Education identified
+↓
+Certifications identified
+↓
+Structured Candidate Profile created
+↓
+Candidate reviews extracted information
+↓
+Candidate confirms data
+
+If Resume Parser is disabled:
+
+Candidate manually creates profile.
+
+---
+
+# 19. JOB CATEGORY MASTER MANAGEMENT
+
+Admin can create unlimited master data.
+
+Structure:
+
+Job Category
+↓
+Job Subcategory
+↓
+Job Role
+↓
+Skills
+
+Example:
+
+Construction
+→ Civil Engineering
+→ Site Engineer
+
+Manufacturing
+→ Machine Operations
+→ CNC Operator
+
+Healthcare
+→ Nursing
+→ Staff Nurse
+
+Warehouse
+→ Operations
+→ Picker / Packer
+
+Domestic Services
+→ Maid
+→ Caregiver
+
+---
+
+# 20. SPECIALIZATION / INDUSTRY EXPERTISE SECTION
+
+A visually attractive section similar to major recruitment portals can appear on Website and App.
+
+Example:
+
+## Our Specializations & Key Industry Expertise
+
+* Maid & Caregiver
+* Construction Worker
+* Manufacturing Labour
+* Warehouse Manpower
+* Logistics
+* Healthcare
+* Hospitality
+* IT & Technology
+* Engineering
+* Sales & Marketing
+* Retail
+* Office Administration
+
+Admin can select a maximum of, for example, 12 categories for the Home Page.
+
+For every category Admin can control:
+
+* Category Name
+* Icon
+* Image
+* Short Description
+* Display Order
+* Active/Inactive
+* Website Visibility
+* App Visibility
+
+Example:
+
+1 – Construction
+2 – Manufacturing
+3 – Warehouse
+4 – Healthcare
+
+Admin can change the order at any time.
+
+---
+
+# 21. WEBSITE HOME PAGE
+
+The Website Home Page can contain:
+
+### Header
+
+* Logo
+* Job Search
+* Find Candidates
+* Job Categories
+* Employers
+* Job Seekers
+* Blog
+* About
+* Contact
+* Login
+* Register
+
+### Main Slider
+
+Admin manageable:
+
+* Image
+* Title
+* Subtitle
+* Button
+* Button Link
+* Sort Number
+* Start Date
+* End Date
+* Web/App Visibility
+
+---
+
+# 22. MAIN JOB SEARCH
+
+Large search section:
+
+Keyword / Job Title
+Location
+Category
+Search Jobs
+
+Advanced filters:
+
+* Industry
+* Category
+* Subcategory
+* Salary
+* Experience
+* Job Type
+* Employer
+* Country
+* State
+* City
+* Work Mode
+* Posted Date
+
+---
+
+# 23. HOME PAGE JOB HIGHLIGHTS
+
+Admin can configure separate blocks:
+
+### Highlight Jobs
+
+Premium / promoted jobs.
+
+### Apply Soon
+
+Jobs approaching application closing date.
+
+### Latest Jobs
+
+Recently posted jobs.
+
+### Featured Employers
+
+Promoted companies.
+
+### Recommended Jobs
+
+For logged-in candidates.
+
+---
+
+# 24. JOB TICKER / MARQUEE
+
+Admin can display an attention banner such as:
+
+"500+ New Jobs Added This Week"
+
+or individual urgent openings.
+
+Admin can configure:
+
+* Text
+* Job Link
+* Start Date
+* End Date
+* Active Status
+* Priority
+
+---
+
+# 25. JOB POSTING BY EMPLOYER
+
+Employer can create job with:
+
+* Job Title
+* Category
+* Subcategory
+* Industry
+* Number of Vacancies
+* Job Description
+* Responsibilities
+* Required Skills
+* Minimum Experience
+* Maximum Experience
+* Education
+* Certifications
+* Salary Min
+* Salary Max
+* Currency
+* Salary Visibility
+* Country
+* State
+* City
+* Job Location
+* Work Mode
+* Job Type
+* Shift
+* Gender requirement where legally appropriate
+* Age requirement where legally permissible
+* Visa / Work Permit
+* Application Closing Date
+* Joining Date
+* Screening Questions
+
+---
+
+# 26. JOB APPROVAL
+
+Admin can configure:
+
+### Auto Publish
+
+Employer post becomes live immediately.
+
+or
+
+### Admin Approval
+
+Employer creates job
+↓
+Admin Reviews
+↓
+Approve / Reject / Request Modification
+↓
+Job Published
+
+---
+
+# 27. NORMAL JOB VS PAID JOB
+
+Every job may have:
+
+* Free Apply
+* Paid Apply
+* Featured
+* Premium
+* Urgent
+* Sponsored
+
+Admin can manually convert any employer-posted job into a Paid Job.
+
+---
+
+# 28. JOB SEEKER PAYMENT CONTROL
+
+For initial months the platform may remain completely free for candidates.
+
+Admin Setting:
+
+Job Seeker Payment
+OFF
+
+Result:
+
+Candidates apply without paying.
+
+Later:
+
+Admin Setting
+Job Seeker Payment
+ON
+
+The monetization module becomes active.
+
+---
+
+# 29. PAID JOB APPLICATION
+
+Admin can configure individual jobs.
+
+Example:
+
+Job: Warehouse Supervisor
+Application Fee: SGD 5
+
+Candidate clicks:
+
+Apply Now
+↓
+System shows payment
+↓
+Payment completed
+↓
+Application submitted
+↓
+Receipt generated
+↓
+Purchase history updated
+
+Admin can manually decide the application fee for every paid job.
+
+---
+
+# 30. JOB SEEKER PURCHASE HISTORY
+
+Candidate dashboard:
+
+| Date   | Job                 | Employer | Amount | Currency | Payment Status |
+| ------ | ------------------- | -------- | -----: | -------- | -------------- |
+| 20 Aug | Warehouse Executive | ABC Ltd  |  SGD 5 | SGD      | Paid           |
+
+Candidates can download receipts where enabled.
+
+---
+
+# 31. EMPLOYER CANDIDATE SELECTION SYSTEM
+
+For every posted job, employer sees candidate data in three distinct sections.
+
+This provides a clean lead management system.
+
+---
+
+# 32. TABLE 1 – ORGANIC APPLICANTS
+
+These are candidates who directly applied for the employer's job.
+
+Example:
+
+| Candidate   | Match | Experience | Skills | Location  | Status  |
+| ----------- | ----: | ---------- | ------ | --------- | ------- |
+| Candidate A |   92% | 5 Years    | 8/10   | Singapore | Applied |
+| Candidate B |   86% | 4 Years    | 7/10   | Malaysia  | Applied |
+
+Organic means:
+
+Candidate saw job
+→ Candidate clicked Apply
+→ Application was submitted.
+
+---
+
+# 33. TABLE 2 – SYSTEM RECOMMENDED CANDIDATES
+
+Lucky Boss Portal automatically searches its internal candidate database.
+
+The system compares:
+
+Job Description
+
+* Skills
+* Experience
+* Education
+* Location
+* Salary
+* Candidate Preferences
+
+Then recommends suitable candidates even if they have not applied.
+
+Example:
+
+| Candidate   | AI Match | Experience | Skill Match | Availability |
+| ----------- | -------: | ---------: | ----------: | ------------ |
+| Candidate C |      95% |    6 Years |         96% | Immediate    |
+| Candidate D |      88% |    5 Years |         90% | 30 Days      |
+
+Employer can invite these candidates to apply.
+
+---
+
+# 34. TABLE 3 – THIRD-PARTY / EXTERNAL JOB MARKET DATA
+
+Optional module controlled completely by Admin.
+
+Possible sources may include licensed feeds, official APIs, recruitment partners or legally/permissibly available public recruitment information.
+
+The platform should not depend on unauthorized scraping or bypassing protections of sites such as LinkedIn or Naukri.
+
+Where an external source permits integration, the record can show:
+
+| Candidate/Lead | Source              | Role       | Match | Available Contact |
+| -------------- | ------------------- | ---------- | ----: | ----------------- |
+| External Lead  | Partner Feed        | Engineer   |   89% | Available         |
+| External Lead  | Approved Job Source | Supervisor |   81% | Available         |
+
+The source should always be displayed clearly.
+
+Admin:
+
+Third-Party Candidate Data
+ON/OFF
+
+If OFF, the entire third table disappears from Employer Portal.
+
+---
+
+# 35. JOB SEEKER THREE-TABLE DASHBOARD
+
+Candidate also receives three job views.
+
+### Table 1 – My Applied Jobs
+
+| Job        | Company | Applied Date | Status       |
+| ---------- | ------- | ------------ | ------------ |
+| Engineer   | ABC     | 19 Aug       | Interview    |
+| Supervisor | XYZ     | 18 Aug       | Under Review |
+
+### Table 2 – Jobs Matching My Profile
+
+Calculated from:
+
+* Skills
+* Experience
+* Category
+* Salary
+* Location
+* Preference
+* Resume
+
+Example:
+
+"92% Match"
+
+### Table 3 – Third-Party Jobs
+
+Where Admin permits:
+
+External jobs from authorized integrations/feeds can be displayed.
+
+The source must be mentioned.
+
+Example:
+
+Source: Partner Job Feed
+
+Admin can enable/disable this entire table.
+
+---
+
+# 36. AI MATCH PERCENTAGE
+
+Match score can be calculated using weighted parameters.
+
+Example model:
+
+Skills: 35%
+Experience: 20%
+Job Category: 10%
+Education: 10%
+Location: 10%
+Salary: 5%
+Availability: 5%
+Other Requirements: 5%
+
+Total: 100%
+
+AI semantic similarity can further improve the recommendation.
+
+Admin can configure scoring logic.
+
+---
+
+# 37. EMPLOYER RECRUITMENT PIPELINE
+
+Every candidate progresses through statuses.
+
+Applied
+↓
+Reviewed
+↓
+Shortlisted
+↓
+Contacted
+↓
+Interview Scheduled
+↓
+Interviewed
+↓
+Second Round
+↓
+Selected
+↓
+Offer Sent
+↓
+Offer Accepted
+↓
+Joined
+
+Other statuses:
+
+* On Hold
+* Rejected
+* Candidate Declined
+* No Response
+* Offer Declined
+* No Show
+
+Admin can create additional statuses.
+
+---
+
+# 38. CANDIDATE CONTACT OPTIONS
+
+Employer can:
+
+* Call Candidate
+* Send Email
+* WhatsApp
+* Send Portal Message
+* Schedule Email
+* Send Interview Invitation
+
+Usage depends upon:
+
+* Package
+* Subscription
+* Admin settings
+* Candidate privacy permissions
+
+---
+
+# 39. EMAIL TEMPLATE SYSTEM
+
+Default templates can be provided.
+
+Examples:
+
+* Candidate Introduction
+* Shortlisted Notification
+* Interview Invitation
+* Interview Reminder
+* Rejection Letter
+* Offer Letter
+* Joining Letter
+
+Employer can:
+
+Use Default Template
+or
+Customize Template
+
+---
+
+# 40. COMPANY IDENTITY PROTECTION
+
+Important security rule:
+
+Company Name, verified company identity and certain legal information must be automatically inserted from the authenticated company account.
+
+Employer users must not be allowed to freely type another company's name into protected templates.
+
+Protected fields:
+
+* Company Name
+* Company Registration Information
+* Verified Company Logo
+* Official HR Signature where configured
+
+This reduces misuse of one company's login for another company.
+
+---
+
+# 41. INTERVIEW SCHEDULING
+
+Employer selects candidate.
+
+Schedule Interview
+↓
+Select Date
+↓
+Select Start Time
+↓
+Select Duration
+↓
+Select Time Zone
+↓
+Select Interview Mode
+
+Modes:
+
+* Office Interview
+* Telephone Interview
+* Zoom
+* Google Meet
+* Microsoft Teams
+* Other
+
+For physical interview:
+
+* Venue
+* Contact Person
+* Instructions
+
+---
+
+# 42. GOOGLE CALENDAR INTEGRATION
+
+Google Calendar permission should not necessarily be requested during initial company registration.
+
+It can be requested only when employer first selects:
+
+"Add to Google Calendar"
+
+Workflow:
+
+Employer schedules interview
+↓
+Clicks Google Calendar
+↓
+Google OAuth Permission
+↓
+Employer authorizes calendar
+↓
+Calendar event created
+↓
+Candidate receives invitation where applicable
+
+Calendar entry includes:
+
+* Candidate
+* Job
+* Date
+* Time
+* Interview Mode
+* Venue / Meeting Link
+* Notes
+
+This reduces unnecessary permission requests.
+
+---
+
+# 43. AI INTERVIEW LETTER
+
+When OpenAI is enabled:
+
+Employer can click:
+
+"Generate with AI"
+
+AI can prepare:
+
+* Interview Invitation
+* Interview Confirmation
+* Follow-Up Message
+* Reschedule Message
+
+Employer must review before sending.
+
+When AI is OFF:
+
+Default templates + manual editing remain available.
+
+---
+
+# 44. OFFER LETTER SYSTEM
+
+When a candidate is selected:
+
+Employer clicks:
+
+Generate Offer Letter
+
+Available options:
+
+1. System Template
+2. Employer Custom Template
+3. AI-Assisted Offer Letter
+
+Fields may include:
+
+* Candidate Name
+* Job Position
+* Joining Date
+* Salary
+* Currency
+* Probation
+* Work Location
+* Terms
+* Reporting Manager
+
+Company Name is automatically taken from verified company account.
+
+Company Name cannot be manually changed.
+
+---
+
+# 45. AI OFFER LETTER
+
+If AI is ON:
+
+Employer provides:
+
+* Position
+* Salary
+* Joining Date
+* Conditions
+
+AI prepares draft.
+
+Employer reviews.
+
+Employer approves.
+
+PDF generated.
+
+Candidate receives:
+
+* Portal Notification
+* Email
+* Optional WhatsApp
+
+AI never automatically sends an offer without employer confirmation.
+
+---
+
+# 46. OFFER ACCEPTANCE
+
+Candidate can:
+
+* View Offer
+* Download Offer
+* Accept
+* Reject
+* Request Clarification
+
+The employer dashboard receives real-time status.
+
+---
+
+# 47. AI CHATBOT
+
+A floating assistant appears at the bottom of Website/App.
+
+## AI Enabled
+
+Chatbot functions as:
+
+* Job Search Assistant
+* Resume Help
+* Employer Help
+* Recruitment FAQ
+* Job Recommendation Assistant
+
+AI token usage can be monitored by Admin.
+
+---
+
+# 48. CHATBOT FALLBACK MODE
+
+If AI Chat is OFF:
+
+The same button can become:
+
+"Need Help?"
+
+User fills:
+
+* Name
+* Mobile
+* Email
+* Query
+
+Message:
+
+"Submit your query and our agent will contact you as soon as possible."
+
+The query goes to Admin CRM/support section.
+
+Thus the UI remains useful even without AI.
+
+---
+
+# 49. BLOG MANAGEMENT
+
+Admin can publish daily recruitment content.
+
+Fields:
+
+* Blog Title
+* URL Slug
+* Category
+* Featured Image
+* Short Description
+* Full Content
+* SEO Title
+* Meta Description
+* Keywords
+* Author
+* Publish Date
+* Status
+
+Categories:
+
+* Career Advice
+* Interview Tips
+* Resume Tips
+* Employer Guides
+* Industry News
+* Singapore Jobs
+* Malaysia Jobs
+* India Jobs
+
+---
+
+# 50. MOBILE APP HOME PAGE
+
+Flutter App home can include:
+
+* Slider
+* Search Jobs
+* Job Categories
+* Highlight Jobs
+* Latest Jobs
+* Apply Soon
+* Recommended Jobs
+* Featured Employers
+* Blog
+* Notifications
+* AI Assistant / Contact Assistant
+
+All content uses the same backend as website.
+
+Admin makes updates once.
+
+Website + Mobile App receive updated content.
+
+---
+
+# 51. JOB SEARCH EXPERIENCE
+
+Job seeker should reach a suitable job with minimum steps.
+
+Example:
+
+App Opens
+↓
+Search "Warehouse"
+↓
+Select Location "Singapore"
+↓
+Jobs Display
+↓
+Filter
+↓
+View Job
+↓
+Apply
+
+Registered candidate:
+
+Apply → Immediate Submission
+
+Paid Job:
+
+Apply → Payment → Submission
+
+---
+
+# 52. SAVED JOBS
+
+Candidates can:
+
+* Save Job
+* Unsave
+* View Saved Jobs
+* Apply Later
+
+Admin may optionally send reminder:
+
+"You saved this job. Applications close tomorrow."
+
+---
+
+# 53. JOB ALERTS
+
+Candidates can create alerts.
+
+Example:
+
+Keyword: Warehouse
+Country: Singapore
+Salary: SGD 2,500+
+
+System can notify when matching jobs are posted.
+
+Channels:
+
+* App Push
+* Email
+* WhatsApp
+
+Subject to Admin configuration.
+
+---
+
+# 54. AI JOB RECOMMENDATION FLOW
+
+Candidate Profile
+↓
+Resume Information
+↓
+Job Preferences
+↓
+OpenAI Embeddings/NLP
+↓
+Vector Search
+↓
+Matching Jobs Identified
+↓
+Score Calculated
+↓
+Recommended Jobs Displayed
+
+Example:
+
+Warehouse Supervisor – 94% Match
+Logistics Coordinator – 88% Match
+Inventory Executive – 84% Match
+
+---
+
+# 55. EMPLOYER AI CANDIDATE DISCOVERY
+
+Employer Posts Job
+↓
+Job converted to structured data
+↓
+AI understands required skills
+↓
+Internal candidate embeddings searched
+↓
+Suitable candidates discovered
+↓
+Candidate ranking calculated
+↓
+Employer receives shortlist
+
+---
+
+# 56. RESUME PARSER + AI + VECTOR WORKFLOW
+
+Candidate uploads resume
+↓
+Resume Parser extracts structured data
+↓
+OpenAI/NLP understands context
+↓
+Embedding generated
+↓
+Pinecone / Vector DB stores embedding
+↓
+Job embeddings compared
+↓
+Similarity calculated
+↓
+Candidates/jobs ranked
+
+---
+
+# 57. AI VOICE INTERVIEW – OPTIONAL
+
+When enabled:
+
+Employer selects candidate
+↓
+Schedule AI Voice Screening
+↓
+System calls Candidate
+↓
+Questions asked
+↓
+Candidate responds
+↓
+Speech-to-Text generates transcript
+↓
+AI evaluates answers
+↓
+Recruiter sees transcript + summary
+
+Admin can control:
+
+AI Voice Interview ON/OFF
+
+---
+
+# 58. AI INTERVIEW SAFEGUARD
+
+AI-generated interview results should be treated as recruitment assistance rather than automatic final hiring decisions.
+
+Final decision remains with authorized employer/recruiter.
+
+AI evaluation can show:
+
+* Communication Summary
+* Skill Response Summary
+* Relevant Experience
+* Question Responses
+* Recruiter Notes
+
+---
+
+# 59. WHATSAPP AUTOMATION
+
+Where enabled and compliant with WhatsApp messaging requirements:
+
+* Registration Confirmation
+* Application Confirmation
+* Interview Notification
+* Interview Reminder
+* Job Alerts
+* Offer Notification
+* Payment Confirmation
+
+Admin can separately enable each message type.
+
+---
+
+# 60. FIREBASE PUSH NOTIFICATION
+
+Examples:
+
+Candidate:
+
+"Your application has been shortlisted."
+
+Employer:
+
+"5 new candidates applied for your Warehouse Supervisor job."
+
+Candidate:
+
+"Your interview is tomorrow at 10:30 AM."
+
+---
+
+# 61. SEARCH ENGINE
+
+Elasticsearch or a similar search service can support:
+
+* Candidate Search
+* Job Search
+* Employer Search
+* Skills Search
+* Location Search
+* Filters
+* Autocomplete
+
+When advanced search service is unavailable, database search can remain as fallback.
+
+---
+
+# 62. PAYMENT SYSTEM
+
+Payment module handles:
+
+### Employer Payments
+
+* Subscription
+* Package Upgrade
+* Add-ons
+* Featured Jobs
+* Extra Candidate Credits
+
+### Job Seeker Payments
+
+Where enabled:
+
+* Paid Job Application
+* Premium Candidate Services
+* Optional Resume Services
+* Other future services
+
+---
+
+# 63. PAYMENT HISTORY
+
+Admin can see:
+
+* Transaction ID
+* Customer
+* Customer Type
+* Package / Job
+* Currency
+* Amount
+* Tax
+* Gateway
+* Status
+* Date
+* Invoice
+
+---
+
+# 64. INVOICE SYSTEM
+
+System can create invoices automatically.
+
+Includes:
+
+* Invoice Number
+* Company
+* Billing Address
+* GST/Tax where applicable
+* Currency
+* Package
+* Amount
+* Payment Reference
+* Date
+
+---
+
+# 65. PROMOTED JOBS
+
+Employer may post a normal job.
+
+Admin can later convert it into:
+
+* Featured Job
+* Urgent Job
+* Sponsored Job
+* Paid Candidate Application Job
+* Home Page Highlight
+
+Admin can define:
+
+* Promotion Start
+* Promotion End
+* Position
+* Priority
+
+---
+
+# 66. ADMIN HOME PAGE MANAGEMENT
+
+Without developer assistance Admin can manage:
+
+* Sliders
+* Category Icons
+* Category Order
+* Highlight Jobs
+* Apply Soon Jobs
+* Featured Jobs
+* Featured Employers
+* Testimonials
+* Blog
+* Home Page Sections
+* Marquee
+* Contact Details
+* Footer
+* Social Links
+* App Download Links
+
+---
+
+# 67. JOB CATEGORY SORT ORDER
+
+Example Home Page:
+
+1. Construction
+2. Manufacturing
+3. Warehouse
+4. Domestic Worker
+5. Healthcare
+6. Hospitality
+7. Logistics
+8. Engineering
+9. IT
+10. Sales
+11. Retail
+12. Administration
+
+Admin changes Sort Number.
+
+Frontend automatically changes category order.
+
+---
+
+# 68. EMPLOYER DASHBOARD
+
+Dashboard cards:
+
+* Active Jobs
+* Expired Jobs
+* Total Applications
+* New Candidates
+* Shortlisted
+* Interviews
+* Offers
+* Hired
+* Remaining Job Credits
+* Candidate View Credits
+* AI Credits
+* Package Expiry
+
+Charts:
+
+* Applications by Job
+* Candidate Sources
+* Hiring Funnel
+* Match Distribution
+* Interview Conversion
+* Hiring Conversion
+
+---
+
+# 69. EMPLOYER JOB DETAIL DASHBOARD
+
+For each job:
+
+### Tab 1
+
+Organic Applicants
+
+### Tab 2
+
+Recommended Candidates
+
+### Tab 3
+
+External Candidates
+
+### Tab 4
+
+Shortlisted
+
+### Tab 5
+
+Interviews
+
+### Tab 6
+
+Offers
+
+### Tab 7
+
+Hired
+
+This keeps recruitment simple and organized.
+
+---
+
+# 70. JOB SEEKER DASHBOARD
+
+Main sections:
+
+* Profile Completion
+* My Applications
+* Recommended Jobs
+* External Jobs
+* Saved Jobs
+* Interviews
+* Offers
+* Notifications
+* Purchase History
+* Resume
+* Account Settings
+
+---
+
+# 71. JOB SEEKER APPLICATION STATUS
+
+Candidate can see:
+
+Applied
+↓
+Employer Viewed
+↓
+Shortlisted
+↓
+Interview Scheduled
+↓
+Interview Completed
+↓
+Selected
+↓
+Offer Sent
+↓
+Hired
+
+This improves transparency.
+
+---
+
+# 72. ADMIN CANDIDATE MANAGEMENT
+
+Admin can:
+
+* View Candidates
+* Search
+* Filter
+* Verify
+* Edit where permitted
+* Block
+* Delete
+* Export
+* View Resume
+* View Applications
+* View AI Match History
+* View Payment History
+* View Login History
+
+---
+
+# 73. ADMIN EMPLOYER MANAGEMENT
+
+Admin can:
+
+* View Company
+* Approve Company
+* Reject Company
+* Assign Company Type
+* Assign Grade
+* Assign Package
+* Extend Subscription
+* Add Credits
+* Restrict Employer
+* Verify Documents
+* View Jobs
+* View Employees
+* View Payments
+
+---
+
+# 74. PACKAGE MANUAL ASSIGNMENT
+
+Admin may assign a package without online payment.
+
+Useful for:
+
+* Trial Company
+* Corporate Agreements
+* Offline Payment
+* Promotional Packages
+* Existing Clients
+
+Admin enters:
+
+Package
+Start Date
+Expiry Date
+Payment Type
+Reference
+Remarks
+
+---
+
+# 75. FREE TRIAL
+
+Admin can create:
+
+"90-Day Free Employer Trial"
+
+or assign trial based on Company Type.
+
+After expiry:
+
+System requests subscription.
+
+---
+
+# 76. JOB SEEKER FREE PERIOD
+
+Initially:
+
+Job Seeker Monetization = OFF
+
+Application Fee = Disabled
+
+All normal job applications = Free
+
+After business growth:
+
+Admin switches:
+
+Job Seeker Monetization = ON
+
+Selected jobs/services can become paid without rebuilding the website or app.
+
+---
+
+# 77. ADMIN AI CONTROL DASHBOARD
+
+Dashboard example:
+
+OpenAI GPT – ON
+Resume Parser – ON
+Embeddings – ON
+Pinecone – ON
+Voice Interview – OFF
+WhatsApp – ON
+AI Chat – ON
+AI Resume Builder – ON
+Third-Party Jobs – OFF
+
+Admin can switch services according to:
+
+* Budget
+* Provider availability
+* Business model
+* Country
+* Package
+
+---
+
+# 78. AI API USAGE REPORT
+
+Example:
+
+| API           | Requests |         Usage | Estimated Cost |
+| ------------- | -------: | ------------: | -------------: |
+| OpenAI        |   12,500 |   4.2M Tokens |     Configured |
+| Resume Parser |    3,200 | 3,200 Resumes |     Configured |
+| Voice         |      850 | 4,200 Minutes |     Configured |
+| WhatsApp      |   18,200 |      Messages |     Configured |
+
+Admin can set alerts.
+
+Example:
+
+"Notify Admin when OpenAI usage reaches 80% of monthly budget."
+
+---
+
+# 79. FALLBACK ARCHITECTURE
+
+The platform must not stop if AI is unavailable.
+
+### AI Matching Unavailable
+
+Fallback:
+
+* Skill Match
+* Experience Match
+* Category Match
+* Location Match
+* Rule-Based Score
+
+### Resume Parser Unavailable
+
+Fallback:
+
+Manual Resume Form
+
+### AI Chat Unavailable
+
+Fallback:
+
+Contact Form
+
+### Voice API Unavailable
+
+Fallback:
+
+Manual Interview Scheduling
+
+### WhatsApp Unavailable
+
+Fallback:
+
+Email + App Notification
+
+This gives operational continuity.
+
+---
+
+# 80. ADMIN CONTENT MANAGEMENT
+
+Admin can manage static pages:
+
+* About Us
+* Employer Services
+* Job Seeker Services
+* Privacy Policy
+* Terms
+* Refund Policy
+* FAQ
+* Contact
+* Subscription Terms
+* Data Protection Policy
+
+---
+
+# 81. SECURITY ARCHITECTURE
+
+Security requirements include:
+
+* Laravel Authentication
+* API Token Authentication
+* Flutter Secure Authentication
+* Role-Based Permissions
+* Server-Side Feature Permission Checks
+* Password Encryption
+* OTP Support
+* Email Verification
+* Phone Verification
+* Rate Limiting
+* Activity Logs
+* Payment Webhook Verification
+* File Validation
+* Resume Malware Protection where available
+* Database Backup
+* Audit Logs
+
+---
+
+# 82. COMPANY DATA ISOLATION
+
+Critical architecture rule:
+
+Every employer record must be linked with a unique Company ID.
+
+Example:
+
+Company
+→ Employer Users
+→ Jobs
+→ Candidates
+→ Interviews
+→ Offers
+→ Templates
+
+A recruiter from Company A cannot access Company B's private data.
+
+This restriction must be enforced at backend/API/database level, not only hidden on the frontend.
+
+---
+
+# 83. AUDIT LOG
+
+Sensitive employer/admin actions can be logged.
+
+Examples:
+
+* Package changed
+* Employer blocked
+* Job converted to paid
+* Candidate downloaded
+* Offer generated
+* Company information changed
+* API configuration changed
+* Payment changed
+
+Log includes:
+
+* User
+* Date
+* IP
+* Action
+* Old Value
+* New Value
+
+---
+
+# 84. WEBSITE AND MOBILE COMMON API
+
+Recommended architecture:
+
+Website
+↓
+Laravel Backend API
+↑
+Flutter Android/iOS App
+
+Both platforms use the same:
+
+* Users
+* Jobs
+* Candidates
+* Applications
+* Packages
+* Payments
+* AI
+* Notifications
+* Settings
+
+Therefore one Admin Portal controls both Website and App.
+
+---
+
+# 85. HIGH-LEVEL SYSTEM ARCHITECTURE
+
+```text
+                    LUCKY BOSS PORTAL
+                           |
+        ----------------------------------------
+        |                 |                    |
+     WEBSITE          FLUTTER APP          ADMIN PORTAL
+        |                 |                    |
+        ----------------------------------------
+                           |
+                    LARAVEL API LAYER
+                           |
+        ----------------------------------------
+        |                  |                   |
+   Authentication     Business Logic       Feature Flags
+        |                  |                   |
+        ----------------------------------------
+                           |
+                       DATABASE
+                           |
+        ------------------------------------------------
+        |             |            |         |         |
+     Jobs         Candidates    Employers   Billing   CMS
+        |
+        ---------------------------------------------------
+        |            AI / AUTOMATION INTEGRATION           |
+        ---------------------------------------------------
+        | OpenAI | Parser | Vector DB | Voice | WhatsApp |
+        | Email  | FCM    | Calendar  | Payment Gateways |
+        ---------------------------------------------------
+```
+
+---
+
+# 86. OVERALL JOB SEEKER FLOW
+
+```text
+Open Website/App
+       ↓
+Search Jobs
+       ↓
+Quick Signup
+       ↓
+Apply for Job
+       ↓
+Profile Completion Warning
+       ↓
+Complete Resume
+       ↓
+AI/Manual Resume Analysis
+       ↓
+Recommended Jobs
+       ↓
+Apply
+       ↓
+Employer Reviews
+       ↓
+Shortlisting
+       ↓
+Interview
+       ↓
+Offer
+       ↓
+Acceptance
+       ↓
+Hired
+```
+
+---
+
+# 87. OVERALL EMPLOYER FLOW
+
+```text
+Company Registration
+       ↓
+Select Company Type
+       ↓
+Eligible Package Displayed
+       ↓
+Subscription
+       ↓
+Company Verification
+       ↓
+Employer Dashboard
+       ↓
+Post Job
+       ↓
+Candidate Collection
+       ↓
+Organic Applicants
+       +
+System Recommended Candidates
+       +
+Optional External Data
+       ↓
+AI/Rule-Based Ranking
+       ↓
+Shortlist
+       ↓
+Email / Contact
+       ↓
+Interview Scheduling
+       ↓
+Calendar Integration
+       ↓
+Feedback
+       ↓
+Selected
+       ↓
+Generate Offer
+       ↓
+Candidate Accepts
+       ↓
+Hiring Completed
+```
+
+---
+
+# 88. ADMIN MASTER FLOW
+
+```text
+SUPER ADMIN
+     ↓
+Company Types
+     ↓
+Company Grades
+     ↓
+Packages
+     ↓
+Currencies
+     ↓
+Job Categories
+     ↓
+Job Subcategories
+     ↓
+Skills
+     ↓
+AI & API Settings
+     ↓
+Payment Settings
+     ↓
+Home Page Settings
+     ↓
+Employer Management
+     ↓
+Job Seeker Management
+     ↓
+Job Management
+     ↓
+Reports & Analytics
+```
+
+---
+
+# 89. RECOMMENDED ADMIN MENU
+
+### Dashboard
+
+### Employers
+
+* Companies
+* Employer Users
+* Verification
+* Company Types
+* Company Grades
+
+### Job Seekers
+
+* Candidates
+* Resume
+* Applications
+* Purchases
+
+### Jobs
+
+* All Jobs
+* Pending Jobs
+* Active Jobs
+* Expired Jobs
+* Paid Jobs
+* Featured Jobs
+* External Jobs
+
+### Masters
+
+* Industry
+* Category
+* Subcategory
+* Job Role
+* Skills
+* Education
+* Experience
+* Countries
+* States
+* Cities
+* Currencies
+
+### Subscription
+
+* Packages
+* Company Package Mapping
+* Subscriptions
+* Trials
+* Credits
+* Invoices
+
+### Recruitment
+
+* Applications
+* Shortlists
+* Interviews
+* Offers
+* Placements
+
+### AI & API
+
+* AI Master Switch
+* OpenAI
+* Resume Parser
+* Embedding
+* Vector DB
+* Voice API
+* WhatsApp
+* Email
+* Calendar
+* Notifications
+
+### Payments
+
+* Transactions
+* Candidate Payments
+* Employer Payments
+* Refunds
+* Gateway Settings
+
+### CMS
+
+* Slider
+* Home Categories
+* Featured Jobs
+* Marquee
+* Blogs
+* Pages
+* FAQ
+
+### Communication
+
+* Email Templates
+* WhatsApp Templates
+* Interview Templates
+* Offer Templates
+* Push Notifications
+
+### Reports
+
+* Employer Reports
+* Candidate Reports
+* Jobs
+* Applications
+* Placements
+* Revenue
+* API Usage
+* AI Usage
+
+### Settings
+
+* General
+* Feature Control
+* Currency
+* Tax
+* Email
+* Security
+* Backup
+
+---
+
+# 90. IMPORTANT DATABASE ENTITIES
+
+Recommended major tables/entities:
+
+* users
+* roles
+* permissions
+* companies
+* company_types
+* company_grades
+* employer_users
+* packages
+* package_features
+* subscriptions
+* subscription_usage
+* job_seekers
+* resumes
+* candidate_experience
+* candidate_education
+* candidate_skills
+* candidate_certificates
+* industries
+* job_categories
+* job_subcategories
+* job_roles
+* skills
+* jobs
+* job_applications
+* saved_jobs
+* candidate_job_matches
+* candidate_recommendations
+* external_jobs
+* external_candidates
+* interviews
+* interview_feedback
+* offers
+* communications
+* email_templates
+* notification_templates
+* payments
+* invoices
+* candidate_purchases
+* currencies
+* feature_flags
+* api_settings
+* api_usage
+* sliders
+* blogs
+* cms_pages
+* audit_logs
+
+---
+
+# 91. SOURCE TRACKING
+
+Every recruitment lead should record a Source.
+
+Examples:
+
+* Direct Application
+* Lucky Boss Database
+* Employer Search
+* AI Recommendation
+* External Partner
+* Referral
+* Admin Upload
+* Campaign
+
+This makes recruitment analytics much more powerful.
+
+---
+
+# 92. CANDIDATE SOURCE ANALYTICS
+
+Employer can view:
+
+100 Total Candidates
+
+45 – Direct Applications
+35 – Lucky Boss Recommendations
+20 – External / Partner Data
+
+Conversions:
+
+100 Candidates
+↓
+40 Shortlisted
+↓
+20 Interviewed
+↓
+8 Offered
+↓
+5 Hired
+
+---
+
+# 93. ADMIN BUSINESS ANALYTICS
+
+Admin dashboard may show:
+
+* Total Employers
+* Active Employers
+* Active Subscriptions
+* Expiring Subscriptions
+* Total Candidates
+* New Candidates
+* Active Jobs
+* Job Applications
+* Paid Jobs
+* Employer Revenue
+* Candidate Revenue
+* Currency-Wise Revenue
+* AI Usage Cost
+* API Usage
+* Placements
+* Conversion Rate
+
+---
+
+# 94. FUTURE SCALABILITY
+
+Architecture should support future features such as:
+
+* Recruitment CRM
+* Payroll
+* Attendance
+* Work Permit Management
+* Visa Processing
+* Background Verification
+* Document Verification
+* Skill Assessment
+* Video Interview
+* Employee Onboarding
+* Agency Commission
+* Client Company Management
+* Recruiter Commission
+* Franchise Management
+* White-Label Recruitment Portal
+
+These can be added without redesigning the core platform.
+
+---
+
+# 95. IMPORTANT APPROACH TO THIRD-PARTY JOB SOURCES
+
+LinkedIn, Naukri and similar platforms should not be treated as unrestricted data sources.
+
+Lucky Boss Portal should use, wherever applicable:
+
+* Official APIs
+* Licensed feeds
+* Approved recruitment partnerships
+* Authorized integrations
+* Employer-provided imports
+* Public information where legally and contractually permitted
+
+Every imported record should store:
+
+* Source
+* Source URL/Reference where allowed
+* Collection Date
+* Data Type
+* Permission/Feed Type
+* Last Updated Date
+
+This provides better compliance and data governance.
+
+---
+
+# 96. AI SHOULD ASSIST, NOT CONTROL THE PLATFORM
+
+The recommended architecture is:
+
+Core Recruitment Platform
++
+Optional AI Intelligence Layer
+
+Not:
+
+# AI API
+
+Entire Recruitment Platform
+
+The core application remains operational without AI.
+
+AI improves:
+
+* Speed
+* Search
+* Matching
+* Ranking
+* Resume processing
+* Communication
+* Interview support
+* Recommendations
+* Analytics
+
+But business-critical functions continue even if one external AI service becomes unavailable.
+
+---
+
+# 97. SIMPLE EMPLOYMENT SELECTION EXPERIENCE
+
+The employer's most important screen should remain easy to understand.
+
+## JOB: WAREHOUSE SUPERVISOR
+
+### 1. Applied Candidates
+
+Candidates who applied directly.
+
+### 2. Recommended Candidates
+
+Candidates automatically identified by Lucky Boss.
+
+### 3. External Candidates
+
+Optional authorized external candidate sources.
+
+Every candidate row can show:
+
+* Name
+* Match %
+* Experience
+* Skills
+* Location
+* Salary
+* Availability
+* Resume
+* Contact
+* Status
+* Action
+
+Actions:
+
+View
+Shortlist
+Email
+Interview
+Reject
+Offer
+
+This avoids making the recruitment system complicated for normal HR users.
+
+---
+
+# 98. LUCKY BOSS PORTAL BUSINESS MODEL
+
+The architecture supports multiple revenue streams.
+
+### Employer Revenue
+
+* Monthly Subscription
+* Quarterly Subscription
+* Annual Subscription
+* Featured Jobs
+* Sponsored Jobs
+* Candidate Credits
+* Resume Downloads
+* AI Credits
+* Extra Employer Users
+* Premium Reports
+
+### Candidate Revenue
+
+Initially:
+
+FREE
+
+Later Admin may activate:
+
+* Paid Job Application
+* Premium Resume
+* Premium Profile
+* AI Resume Services
+* Priority Application
+* Other candidate services
+
+Nothing needs to be hard-coded as permanently free or permanently paid.
+
+---
+
+# 99. RECOMMENDED DEVELOPMENT PRINCIPLE
+
+All business controls should be data-driven.
+
+Avoid coding statements such as:
+
+"Candidate payment is always free."
+
+Instead:
+
+```text
+candidate_payment_enabled = false
+```
+
+Admin changes it later to:
+
+```text
+candidate_payment_enabled = true
+```
+
+Similarly:
+
+```text
+ai_resume_enabled
+ai_chat_enabled
+third_party_jobs_enabled
+voice_interview_enabled
+whatsapp_enabled
+candidate_paid_jobs_enabled
+```
+
+This makes Lucky Boss Portal highly configurable.
+
+---
+
+# 100. FINAL PLATFORM CONCEPT
+
+Lucky Boss Portal should ultimately operate as:
+
+### Recruitment Marketplace
+
+Job Seekers + Employers
+
+### Recruitment SaaS
+
+Subscription packages for companies
+
+### AI Recruitment Engine
+
+Resume matching + candidate ranking
+
+### Candidate Database
+
+Searchable talent pool
+
+### Recruitment Automation Platform
+
+Email + WhatsApp + Interview + Offer
+
+### Employer ATS
+
+Application tracking and hiring pipeline
+
+### Job Discovery Platform
+
+Internal + recommended + authorized external opportunities
+
+### Multi-Country Platform
+
+Multi-Currency + Multi-Location
+
+### Configurable AI Platform
+
+Every major paid AI/API feature controlled from Admin
+
+---
+
+# FINAL RECOMMENDED SYSTEM FLOW
+
+```text
+                         LUCKY BOSS PORTAL
+                                │
+               ┌────────────────┴────────────────┐
+               │                                 │
+          JOB SEEKER                         EMPLOYER
+               │                                 │
+       Quick Registration                Company Registration
+               │                                 │
+          Search Jobs                      Select Package
+               │                                 │
+       Complete Resume                     Subscription
+               │                                 │
+        AI / Manual Profile                  Post Job
+               │                                 │
+       Job Recommendations        ┌──────────────┼──────────────┐
+               │                  │              │              │
+          Apply Job           Organic        System         External
+               │              Applicants     Matches         Data
+               │                  │              │              │
+               └──────────────────┴──────┬───────┴──────────────┘
+                                        │
+                                  Matching Score
+                                        │
+                                      Ranking
+                                        │
+                                    Shortlisting
+                                        │
+                                   Communication
+                                        │
+                                Interview Scheduling
+                                        │
+                                Google Calendar
+                                        │
+                                    Evaluation
+                                        │
+                                     Selected
+                                        │
+                                  Offer Generation
+                                        │
+                              Candidate Acceptance
+                                        │
+                                      HIRING
+```
+
+## Recommended Core Architecture Principle
+
+**Admin Control → Laravel Business Engine → Shared API → Website + Flutter App → Optional AI & Automation Services**
+
+This structure gives Lucky Boss Portal full control over commercial packages, employer access, candidate payments, AI expenses, external data visibility and future monetization while keeping the recruitment experience simple for both job seekers and employers.
