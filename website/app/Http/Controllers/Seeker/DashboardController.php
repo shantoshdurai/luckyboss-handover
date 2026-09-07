@@ -9,7 +9,10 @@ use App\Models\Offer;
 use App\Models\Interview;
 use App\Models\PlatformNotification;
 use App\Services\AIRecruitmentEngineService;
+use App\Services\JobMatchService;
 use App\Services\NotificationService;
+use App\Services\SiteSettingsService;
+use App\Services\SubscriptionEntitlementService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -35,15 +38,40 @@ class DashboardController extends Controller
         $interviews = Interview::with('application.job.company')->whereHas('application', fn ($query) => $query->where('candidate_id', $user->id))->latest('scheduled_at')->get();
         $savedJobIds = $user->savedJobs()->pluck('job_id')->all();
         $savedJobs = Job::with('company')->whereIn('id', $savedJobIds)->get();
-        $allMatchingJobs = Job::with('company')->where('status', 'published')->latest('published_at')->get();
+
+        // Every open vacancy, before any personalisation. This used to be handed
+        // straight to the view as "recommendedJobs" and labelled "Curated ...
+        // based on your location and background" - it was ordered by publish
+        // date and had never been compared to the candidate at all. A seeker who
+        // had just signed up and told us nothing still saw six jobs presented as
+        // chosen for them.
+        $openJobs = Job::with('company')->where('status', 'published')->latest('published_at')->get();
+
+        $matcher = app(JobMatchService::class);
+        $settings = app(SiteSettingsService::class)->matching();
+
+        // Can we match this person yet? If not, the view asks for a resume
+        // instead of pretending. readiness() also tells it what is missing, so
+        // the prompt is specific rather than a generic "complete your profile".
+        $readiness = $matcher->readiness($user);
+
+        $matchedJobs = $readiness['ready']
+            ? $matcher->rank($openJobs, $user, $settings['minimum_match_score'])
+            : collect();
 
         return view('seeker.dashboard', [
             'user' => $user,
             'tab' => $tab,
             'profile' => $user->candidateProfile,
             'applications' => $applications,
-            'recommendedJobs' => $allMatchingJobs->take(6),
-            'allMatchingJobs' => $allMatchingJobs,
+            'matchReadiness' => $readiness,
+            'matchSettings' => $settings,
+            'recommendedJobs' => $matchedJobs->take(6),
+            'allMatchingJobs' => $matchedJobs,
+            // Kept separate and never described as recommendations: this is the
+            // browse-everything list, which a seeker with an empty profile is
+            // still entitled to see.
+            'openJobs' => $openJobs,
             'savedJobIds' => $savedJobIds,
             'savedJobs' => $savedJobs,
             'appliedJobIds' => $applications->pluck('job_id')->all(),
@@ -68,8 +96,90 @@ class DashboardController extends Controller
 
         abort_unless($job->status === 'published', 404);
 
-        $match = app(AIRecruitmentEngineService::class)->calculateMatch($job, $user);
-        $score = $match['score'] ?? 88;
+        $application = $this->submit($job, $user);
+        $score = $application->match_score === null ? null : (int) $application->match_score;
+
+        return back()->with('success', $score === null
+            ? "Application for {$job->title} submitted."
+            : "Application for {$job->title} submitted — a {$score}% match to your profile.");
+    }
+
+    /**
+     * Apply to every vacancy currently matching above the admin threshold.
+     *
+     * The feature sir asked for: one button on the matched list rather than
+     * tapping through thirty jobs one at a time. It is deliberately narrow —
+     *
+     *   - only vacancies on Lucky Boss, never a third-party board;
+     *   - only jobs that scored above the threshold, so it cannot become
+     *     "apply to everything";
+     *   - capped by the admin's bulk_apply_limit, so one tap cannot put a
+     *     candidate in front of every employer on the platform at once;
+     *   - a POST from an explicit tap, never automatic.
+     *
+     * The candidate is told exactly how many went out, and firstOrCreate means
+     * a double submit re-applies to nothing.
+     */
+    public function applyAll(Request $request): RedirectResponse
+    {
+        $user = auth()->user();
+        if (! $user || ! $user->hasRole('job-seeker')) {
+            return redirect()->route('login')->with('info', 'Please sign in as a Job Seeker to apply for jobs.');
+        }
+
+        $settings = app(SiteSettingsService::class)->matching();
+        if (! $settings['bulk_apply_enabled']) {
+            return back()->with('info', 'Applying to several jobs at once is currently switched off.');
+        }
+
+        $matcher = app(JobMatchService::class);
+        if (! $matcher->readiness($user)['ready']) {
+            return back()->with('info', 'Add your skills or upload your resume first, so we know which jobs to apply to.');
+        }
+
+        $alreadyApplied = $user->applications()->pluck('job_id')->all();
+
+        $targets = $matcher->rank(
+            Job::with('company')->where('status', 'published')->whereNotIn('id', $alreadyApplied)->get(),
+            $user,
+            $settings['minimum_match_score']
+        )->take($settings['bulk_apply_limit']);
+
+        if ($targets->isEmpty()) {
+            return back()->with('info', "No new jobs above {$settings['minimum_match_score']}% right now. We will keep looking.");
+        }
+
+        foreach ($targets as $job) {
+            $this->submit($job, $user);
+        }
+
+        $count = $targets->count();
+
+        // Records the tap itself, quantity 1, distinct from the per-application
+        // `apply` rows written inside submit().
+        app(SubscriptionEntitlementService::class)
+            ->consume($user, 'bulk_apply', 1, null, "Apply All sent {$count} applications");
+
+        return back()->with('success', $count === 1
+            ? 'Applied to 1 matching job.'
+            : "Applied to {$count} matching jobs.");
+    }
+
+    /**
+     * Creates one application and notifies both sides.
+     *
+     * Shared by apply() and applyAll() so a bulk application is identical to a
+     * single one — same score, same employer alert, same audit trail.
+     */
+    private function submit(Job $job, \App\Models\User $user): JobApplication
+    {
+        // Null when we cannot honestly score this pairing. It is stored as null
+        // and rendered as "not scored", not as a number: the fallback here used
+        // to be `?? 88`, so a candidate we knew nothing about was announced to
+        // the employer as an 88% match, and told so themselves in the
+        // confirmation message.
+        $score = app(JobMatchService::class)->score($job, $user)['score'] ?? null;
+        $matchNote = $score === null ? '' : " ({$score}% match)";
 
         $application = JobApplication::firstOrCreate(
             ['job_id' => $job->id, 'candidate_id' => $user->id],
@@ -78,23 +188,33 @@ class DashboardController extends Controller
                 'match_score' => $score,
                 'applied_at' => now(),
                 'last_activity_at' => now(),
-                'source' => 'Direct Candidate Portal'
+                'source' => 'Direct Candidate Portal',
             ]
         );
 
-        // 1. Notify Candidate
+        // Metered, not charged. `apply` is a zero-priced, unlimited SKU: the
+        // candidate is never refused and never sees a balance. It is recorded
+        // because sir's decision on 2026-09-07 was that seekers are free "in a
+        // way like zero rupees", flippable to paid from the backend later — and
+        // that decision is only worth anything if the usage history starts
+        // accruing now. `wasRecentlyCreated` keeps a repeat tap from
+        // double-counting an application that already existed.
+        if ($application->wasRecentlyCreated) {
+            app(SubscriptionEntitlementService::class)->consume($user, 'apply', 1, $application);
+        }
+
         try {
             app(NotificationService::class)->send(
                 $user,
                 'application_status',
                 "Application Submitted: {$job->title}",
-                "Your application for {$job->title} at " . ($job->company->name ?? 'Verified Employer') . " has been received ({$score}% AI Match score).",
+                "Your application for {$job->title} at ".($job->company->name ?? 'Verified Employer')." has been received{$matchNote}.",
                 ['job_id' => $job->id, 'application_id' => $application->id],
                 'job_match'
             );
-        } catch (\Throwable $e) {}
+        } catch (\Throwable $e) {
+        }
 
-        // 2. Notify Employer
         $employerUser = $job->company?->users()->first();
         if ($employerUser) {
             try {
@@ -102,14 +222,15 @@ class DashboardController extends Controller
                     $employerUser,
                     'applicant_alert',
                     "New Application: {$user->name}",
-                    "{$user->name} applied for {$job->title} ({$score}% match)",
+                    "{$user->name} applied for {$job->title}{$matchNote}",
                     ['job_id' => $job->id, 'application_id' => $application->id],
                     'new_candidate'
                 );
-            } catch (\Throwable $e) {}
+            } catch (\Throwable $e) {
+            }
         }
 
-        return back()->with('success', "Application for {$job->title} submitted successfully! Verified with a {$score}% AI Match score.");
+        return $application;
     }
 
     public function withdraw(JobApplication $application): RedirectResponse

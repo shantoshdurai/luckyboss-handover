@@ -52,3 +52,14 @@ yarn-error.log
 /.fleet
 /.idea
 /.vscode
+
+# Runtime uploads that are candidate data or test artefacts, not site content.
+# Branding, sliders, blogs and company logos stay tracked — those are the site.
+# Resumes and candidate photos are neither: they belong to real people, and the
+# test suite writes throwaway files here too (UploadedFile::fake() produces
+# zero-byte PDFs, 212 of which had accumulated by 2026-09-07).
+/public/uploads/resumes/
+/public/uploads/candidates/
+
+# The seeded SQLite database. Rebuilt with `php artisan migrate:fresh --seed`.
+/database/database.sqlite

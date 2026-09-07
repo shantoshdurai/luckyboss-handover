@@ -41,9 +41,13 @@
                     <div class="min-w-0 flex-1">
                         <div class="flex items-center gap-1.5">
                             <p class="text-sm font-bold text-navy truncate">{{ auth()->user()->name ?? 'Candidate' }}</p>
-                            <span class="inline-flex text-[9px] font-bold px-1.5 py-0.2 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">Verified</span>
+                            {{-- Shown for everyone regardless of whether anything had been
+                                 verified. Tied to the one check we actually perform. --}}
+                            @if(auth()->user()?->email_verified_at)
+                                <span class="inline-flex text-[9px] font-bold px-1.5 py-0.2 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">Verified</span>
+                            @endif
                         </div>
-                        <a href="{{ route('seeker.profile.edit') }}" class="text-xs text-secondary-600 hover:text-navy font-semibold transition-colors">Edit Profile &rarr;</a>
+                        <a href="{{ route('seeker.profile.show') }}" class="text-xs text-secondary-600 hover:text-navy font-semibold transition-colors">View Profile &rarr;</a>
                     </div>
                 </div>
             </div>
@@ -57,7 +61,8 @@
                         ['label' => 'My Applications', 'url' => route('seeker.dashboard', ['tab' => 'applications']), 'active' => request('tab') === 'applications', 'icon' => 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z'],
                         ['label' => 'Matching Jobs', 'url' => route('seeker.dashboard', ['tab' => 'matching']), 'active' => request('tab') === 'matching', 'icon' => 'M13 10V3L4 14h7v7l9-11h-7z'],
                         ['label' => 'Saved Jobs', 'url' => route('seeker.dashboard', ['tab' => 'saved']), 'active' => request('tab') === 'saved', 'icon' => 'M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z'],
-                        ['label' => 'Candidate Profile', 'url' => route('seeker.profile.edit'), 'active' => request()->routeIs('seeker.profile.*'), 'icon' => 'M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z'],
+                        ['label' => 'My Resume', 'url' => route('seeker.resume.choose'), 'active' => request()->routeIs('seeker.resume.*'), 'icon' => 'M7 16a4 4 0 01-.88-7.9A5 5 0 1115.9 6H16a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12'],
+                        ['label' => 'Candidate Profile', 'url' => route('seeker.profile.show'), 'active' => request()->routeIs('seeker.profile.*'), 'icon' => 'M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z'],
                         ['label' => 'Find Jobs', 'url' => route('jobs.index'), 'active' => false, 'icon' => 'M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z'],
                     ];
                 ?>

@@ -67,7 +67,23 @@ class JobController extends Controller
         $data['status'] = $request->boolean('publish_now') ? 'published' : 'draft';
         $data['published_at'] = $data['status'] === 'published' ? now() : null;
         $this->storeImage($request, $data);
+
+        // Charged against the company's `job_post` balance — but only refused
+        // once an admin turns enforcement on. Until prices are signed off this
+        // records the usage and always succeeds, which is what "billing starts
+        // at zero" means in practice. Checked before the vacancy is created so a
+        // refusal never leaves a job behind that was not paid for.
+        $entitlements = app(\App\Services\SubscriptionEntitlementService::class);
+        $company = $this->company();
+
+        if (! $entitlements->consume($company, 'job_post', 1, null, $data['title'] ?? null)) {
+            return back()
+                ->withInput()
+                ->with('info', 'You have used all your vacancy credits for this month. Add more from Subscription to post again.');
+        }
+
         Job::create($data);
+
         return redirect()->route('employer.jobs.index')->with('success', 'Job saved.');
     }
 

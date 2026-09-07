@@ -80,7 +80,27 @@ class DatabaseSeeder extends Seeder
         $company = Company::firstOrCreate(['name' => 'Luckyboss Demo Recruitment'], ['email' => 'hello@luckyboss.test', 'country_code' => 'SG', 'status' => 'verified', 'industry' => 'Recruitment', 'company_type_id' => $types->firstWhere('name', 'Recruitment Agency')->id, 'company_grade_id' => $grades->firstWhere('name', 'Premium')->id]);
         foreach ([['code'=>'SGD','name'=>'Singapore Dollar','symbol'=>'S$'],['code'=>'INR','name'=>'Indian Rupee','symbol'=>'Rs'],['code'=>'MYR','name'=>'Malaysian Ringgit','symbol'=>'RM']] as $currency) { \App\Models\Currency::updateOrCreate(['code'=>$currency['code']],$currency); }
         foreach ([['code'=>'IN','name'=>'India'],['code'=>'SG','name'=>'Singapore']] as $country) { Country::updateOrCreate(['code'=>$country['code']], $country + ['sort_order' => 1, 'is_active' => true]); }
-        $plans=[]; foreach ([['Starter',99,['job_posts'=>5,'candidate_views'=>50,'ai_matching'=>false,'ai_usage'=>0,'byoai'=>true]],['Professional',299,['job_posts'=>25,'candidate_views'=>500,'ai_matching'=>true,'ai_usage'=>200,'byoai'=>true]],['Enterprise',799,['job_posts'=>-1,'candidate_views'=>-1,'ai_matching'=>true,'ai_usage'=>-1,'external_candidates'=>true,'byoai'=>true]]] as [$name,$price,$entitlements]) { $plans[$name]=Package::updateOrCreate(['slug'=>str($name)->slug()],['name'=>$name,'description'=>"{$name} employer recruitment package",'validity_days'=>30,'entitlements'=>$entitlements,'is_active'=>true]); $plans[$name]->prices()->updateOrCreate(['currency_code'=>'SGD'],['amount'=>$price,'tax_rate'=>0]); }
+        // Three tiers across three markets, per spec §12 (AI limits), §71 (contact
+        // views) and §64 (prices). §64 anchors Professional at SGD 299 / INR 18,000
+        // / MYR 999 and explicitly rejects live currency conversion — "This is
+        // better than forcing real-time currency conversion" — so every price is a
+        // stored per-market number, and Starter/Enterprise are scaled from that
+        // anchor and rounded to figures that read naturally in each market.
+        //
+        // All of it is admin-editable. These are starting values, not a commitment.
+        //
+        // -1 means unlimited. `SubscriptionEntitlementService` converts it to the
+        // null the rest of the code means by "unlimited"; a finite total cannot
+        // represent it.
+        $plans=[];
+        foreach ([
+            ['Starter',      ['SGD'=>99,  'INR'=>5999,  'MYR'=>349],  ['job_posts'=>5,  'candidate_views'=>20,  'ai_matching'=>false, 'ai_usage'=>0,   'byoai'=>true]],
+            ['Professional', ['SGD'=>299, 'INR'=>18000, 'MYR'=>999],  ['job_posts'=>25, 'candidate_views'=>250, 'ai_matching'=>true,  'ai_usage'=>100, 'byoai'=>true]],
+            ['Enterprise',   ['SGD'=>799, 'INR'=>47999, 'MYR'=>2699], ['job_posts'=>-1, 'candidate_views'=>-1,  'ai_matching'=>true,  'ai_usage'=>-1,  'external_candidates'=>true, 'byoai'=>true]],
+        ] as [$name,$prices,$entitlements]) {
+            $plans[$name]=Package::updateOrCreate(['slug'=>str($name)->slug()],['name'=>$name,'description'=>"{$name} employer recruitment package",'validity_days'=>30,'entitlements'=>$entitlements,'is_active'=>true]);
+            foreach ($prices as $currency=>$amount) { $plans[$name]->prices()->updateOrCreate(['currency_code'=>$currency],['amount'=>$amount,'tax_rate'=>0]); }
+        }
         $subscription=Subscription::updateOrCreate(['company_id'=>$company->id,'package_id'=>$plans['Professional']->id],['status'=>'active','starts_at'=>today(),'expires_at'=>today()->addDays(90),'entitlements'=>$plans['Professional']->entitlements,'currency_code'=>'SGD','amount'=>299]);
         Payment::firstOrCreate(['reference'=>'LB-DEMO-001'],['company_id'=>$company->id,'subscription_id'=>$subscription->id,'purpose'=>'subscription','gateway'=>'manual','status'=>'paid','currency_code'=>'SGD','amount'=>299,'paid_at'=>now()]);
         $payment=Payment::where('reference','LB-DEMO-001')->first(); Invoice::firstOrCreate(['number'=>'INV-LB-0001'],['payment_id'=>$payment->id,'company_id'=>$company->id,'number'=>'INV-LB-0001','type'=>'employer','status'=>'issued','currency_code'=>'SGD','amount'=>299]);
@@ -115,7 +135,11 @@ class DatabaseSeeder extends Seeder
         $employer = User::firstOrCreate(['email' => 'employer@luckyboss.test'], ['name' => 'Arun Kumar', 'phone' => '+6591234567', 'country_code' => 'SG', 'password' => 'password']);
         $employer->roles()->syncWithoutDetaching([$roles['employer']->id]); $company->users()->syncWithoutDetaching([$employer->id => ['company_role' => 'company-admin', 'is_active' => true]]);
         $candidate = User::firstOrCreate(['email' => 'candidate@luckyboss.test'], ['name' => 'Maya Tan', 'phone' => '+6587654321', 'country_code' => 'SG', 'password' => 'password']);
-        $candidate->roles()->syncWithoutDetaching([$roles['job-seeker']->id]); $candidate->candidateProfile()->firstOrCreate([], ['country_code' => 'SG', 'current_title' => 'Warehouse Coordinator', 'current_location' => 'Singapore', 'preferred_location' => 'Singapore', 'years_experience' => 4, 'profile_completion' => 65]);
+        $candidate->roles()->syncWithoutDetaching([$roles['job-seeker']->id]); // Skills and an expected salary matter here, not as decoration: JobMatchService
+        // refuses to score a candidate it knows nothing about, so without them a fresh
+        // install shows the demo seeker "Upload your resume to see your matches" and
+        // nobody can see matching or Apply All working at all.
+        $candidate->candidateProfile()->firstOrCreate([], ['country_code' => 'SG', 'current_title' => 'Warehouse Coordinator', 'current_location' => 'Singapore', 'preferred_location' => 'Singapore', 'years_experience' => 4, 'expected_salary' => 3000, 'preferred_currency' => 'SGD', 'skills' => ['Forklift', 'Inventory', 'Warehouse', 'Logistics', 'Picking', 'Packing', 'Safety'], 'profile_completion' => 65]);
         // A candidate who has actually applied.
         //
         // The seeder imported JobApplication and never created one, so the

@@ -120,7 +120,10 @@ class AuthController extends Controller
                 $user->roles()->attach(Role::where('slug', 'job-seeker')->value('id'));
                 CandidateProfile::create([
                     'user_id'            => $user->id,
-                    'country_code'       => $data['country_code'],
+                    // Nullable, and no longer collected at sign-up. Reading the
+                    // key directly would throw the moment the field left the
+                    // form, exactly as `company_type_id` did on the employer side.
+                    'country_code'       => $data['country_code'] ?? null,
                     'profile_completion' => 20,
                 ]);
                 return $user;
@@ -166,7 +169,13 @@ class AuthController extends Controller
 
                 $company = Company::create([
                     'name'                => $data['company_name'],
-                    'company_type_id'     => $data['company_type_id'],
+                    // `company_type_id` is nullable, so validated() simply does
+                    // not contain the key when the field is left blank. Reading
+                    // it directly threw "Undefined array key", which the catch
+                    // below swallowed into "Registration failed. Please try
+                    // again." — an employer who skipped the optional dropdown
+                    // could never sign up, and was told nothing useful about why.
+                    'company_type_id'     => $data['company_type_id'] ?? null,
                     'country_code'        => $data['country_code'],
                     'registration_number' => $data['registration_number'] ?? null,
                     'email'               => $data['email'],

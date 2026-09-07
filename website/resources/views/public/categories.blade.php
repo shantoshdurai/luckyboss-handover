@@ -49,7 +49,6 @@
                                 break;
                             }
                         }
-                        $jobCount = $category->jobs_count ?? ($category->jobs ? $category->jobs->count() : 0);
                     @endphp
                     <a href="{{ route('jobs.index', ['category' => $category->id]) }}" 
                        class="group bg-white rounded-3xl overflow-hidden border border-border hover:border-accent shadow-xs hover:shadow-xl hover:-translate-y-1.5 transition-all duration-300 flex flex-col justify-between">
@@ -58,11 +57,10 @@
                             <div class="h-44 w-full relative overflow-hidden bg-surface-sunken">
                                 <img src="{{ $matchedImage }}" alt="{{ $category->name }}" class="w-full h-full object-cover group-hover:scale-108 transition-transform duration-700 ease-out" loading="lazy">
                                 <div class="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-transparent"></div>
-                                <div class="absolute bottom-3 left-4 right-4 flex items-center justify-between text-white">
-                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-white/20 backdrop-blur-md border border-white/30 text-white">
-                                        {{ number_format($jobCount) }} Jobs Available
-                                    </span>
-                                </div>
+                                {{-- Job count removed here for the same reason as
+                                     the home page: "0 Jobs Available" on a trade
+                                     nobody has posted to yet is the worst thing
+                                     this card can say. --}}
                             </div>
 
                             {{-- Category Title & Description --}}

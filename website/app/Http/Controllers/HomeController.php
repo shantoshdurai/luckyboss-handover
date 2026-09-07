@@ -16,10 +16,11 @@ class HomeController extends Controller
     public function __invoke(): View
     {
         return view('home', [
-            // What the search box cycles through. Taken from the vacancies that
-            // actually exist, so the hint can never advertise a trade we have
-            // nothing in — a candidate typing back a suggestion and getting an
-            // empty result is worse than no suggestion at all.
+            // The trade names the hero line cycles through ("Hiring now for
+            // ..."). Taken from the vacancies that actually exist, so the hero
+            // can never advertise a trade we have nothing in — which matters
+            // more now than when this fed a search placeholder, because the
+            // line is a statement rather than a suggestion.
             'rollingTerms' => Cache::remember('home.rolling_terms', 600, function () {
                 $titles = Job::where('status', 'published')
                     ->orderByDesc('published_at')

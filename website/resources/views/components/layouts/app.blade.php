@@ -42,11 +42,55 @@
     {{-- Google Fonts: Anthropic/Claude Style Editorial Serif (Newsreader) + Plus Jakarta Sans --}}
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400..800;1,6..72,400..800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Newsreader:ital,opsz,wght@0,6..72,400..800;1,6..72,400..800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 
     <style>
+        /*
+            Palette and type, set as token overrides rather than by rebuilding
+            the stylesheet. This project ships a prebuilt CSS bundle with no Node
+            step, so the tokens the bundle already defines are the only sane
+            place to change the look — every page picks these up at once, and
+            nothing has to be recompiled.
+
+            Two changes, both asked for after looking at how tickbig.com reads:
+
+            1. Inter for UI text. Their pages use it, and it is the reason they
+               look cleaner at small sizes than we did. It is also free and
+               open source — ChatGPT's own typefaces (Söhne, OpenAI Sans) are
+               licensed and we cannot ship them. Newsreader stays for display
+               headings; it is the one thing in our identity they do not have.
+
+            2. The greys move off slate and onto the navy in our logo. The page
+               ground is a soft blue-white rather than a neutral grey, and cards
+               stay pure white on top of it, which is what makes white surfaces
+               read as deliberate instead of as an unstyled background.
+
+            Muted text was also darkened from #94a3b8: against a light ground it
+            sat near 2.6:1, which is unreadable outdoors — and our candidates are
+            on site, in sunlight, on cheap phones.
+        */
+        :root {
+            --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, sans-serif;
+            --font-heading: "Inter", ui-sans-serif, system-ui, sans-serif;
+
+            --color-surface: #F2F6FC;
+            --color-surface-raised: #FFFFFF;
+            --color-surface-sunken: #E8EFF9;
+
+            --color-border: #DCE6F3;
+
+            --color-text-primary: #0B1E38;
+            --color-text-secondary: #46586F;
+            --color-text-muted: #6E829C;
+        }
+
+        /* Alpine hides these once it boots; without the rule every x-show="false"
+           panel is painted first and then yanked away, so a multi-step form
+           flashes all of its steps at once on load. */
+        [x-cloak] { display: none !important; }
+
         @keyframes pageEntrance {
             0% { opacity: 0; transform: translateY(6px); }
             100% { opacity: 1; transform: translateY(0); }
