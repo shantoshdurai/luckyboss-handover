@@ -15,23 +15,49 @@ class PortalController extends Controller
     public function seekerDashboard(Request $request)
     {
         $this->role($request, 'job-seeker'); $user = $request->user();
-        return response()->json(['profile' => $user->candidateProfile, 'applications' => $user->applications()->with('job.company')->latest('applied_at')->get(), 'recommended_jobs' => Job::with('company')->where('status', 'published')->take(10)->get()]);
+        $matcher = app(\App\Services\JobMatchService::class);
+        $settings = app(\App\Services\SiteSettingsService::class)->matching();
+        $readiness = $matcher->readiness($user);
+
+        // `recommended_jobs` used to be the ten most recent published vacancies,
+        // handed to the app under a name that says they were chosen for this
+        // candidate. They were not compared to the candidate at all. It is now
+        // either real matches or an empty list plus `match_readiness`, which
+        // tells the app what to ask the candidate for.
+        $recommended = $readiness['ready']
+            ? $matcher->rank(
+                Job::with('company')->where('status', 'published')->get(),
+                $user,
+                $settings['minimum_match_score']
+            )->take(10)
+            : collect();
+
+        return response()->json([
+            'profile' => $user->candidateProfile,
+            'applications' => $user->applications()->with('job.company')->latest('applied_at')->get(),
+            'recommended_jobs' => $recommended->values(),
+            'match_readiness' => $readiness,
+            'minimum_match_score' => $settings['minimum_match_score'],
+        ]);
     }
 
     public function apply(Request $request, Job $job)
     {
         $this->role($request, 'job-seeker'); abort_unless($job->status === 'published', 404);
         abort_if($job->is_paid_apply, 422, 'Payment is required before applying to this job.');
-        
-        $match = app(\App\Services\AIRecruitmentEngineService::class)->calculateMatch($job, $request->user());
-        
+
+        // Null when the profile is too thin to compare honestly. The engine this
+        // used to call clamps everything to a minimum of 45%, so a candidate who
+        // had filled in nothing still reached the employer as a 45% match.
+        $match = app(\App\Services\JobMatchService::class)->score($job, $request->user());
+
         $application = JobApplication::firstOrCreate(
             ['job_id' => $job->id, 'candidate_id' => $request->user()->id],
-            ['status' => 'New', 'match_score' => $match['score'], 'applied_at' => now(), 'last_activity_at' => now()]
+            ['status' => 'New', 'match_score' => $match['score'] ?? null, 'applied_at' => now(), 'last_activity_at' => now()]
         );
-        
+
         return response()->json([
-            'application' => $application, 
+            'application' => $application,
             'match' => $match,
             'created' => $application->wasRecentlyCreated
         ], $application->wasRecentlyCreated ? 201 : 200);

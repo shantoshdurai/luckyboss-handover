@@ -24,12 +24,16 @@ use App\Http\Controllers\Admin\ReportController as AdminReportController;
 use App\Http\Controllers\Admin\ControlCenterController as AdminControlCenterController;
 use App\Http\Controllers\Admin\RecordController;
 use App\Http\Controllers\Admin\AdminOperationsController;
+use App\Http\Controllers\Admin\EntitlementController;
+use App\Http\Controllers\Admin\JobMatchingController;
+use App\Http\Controllers\Seeker\ResumeIntakeController;
 use App\Http\Controllers\Admin\SiteSettingsController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BlogController;
 use App\Http\Controllers\Employer\DashboardController as EmployerDashboardController;
 use App\Http\Controllers\Employer\JobController as EmployerJobController;
 use App\Http\Controllers\Employer\PortalController as EmployerPortalController;
+use App\Http\Controllers\Employer\SubscriptionController as EmployerSubscriptionController;
 use App\Http\Controllers\Employer\RecruitmentController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\PageController;
@@ -108,8 +112,10 @@ Route::middleware('auth')->group(function () {
     })->name('notifications.mark-all-read');
 });
 
-// Bare /register kept from our tree: several links and the apps point at it.
-Route::get('/register', fn () => redirect()->route('register.seeker'))->name('register');
+// `/register` asks which kind of account first, the way tickbig.com does.
+// It used to redirect straight to the job seeker form, so an employer arriving
+// from the Register button landed on the wrong sign-up.
+Route::get('/register', fn () => view('auth.register-choose'))->name('register');
 Route::get('/register/job-seeker', [AuthController::class, 'showCandidateRegister'])->name('register.seeker');
 Route::post('/register/job-seeker', [AuthController::class, 'registerCandidate'])->name('register.seeker.store');
 Route::get('/register/employer', [AuthController::class, 'showEmployerRegister'])->name('register.employer');
@@ -120,6 +126,11 @@ Route::middleware('auth')->group(function (): void {
 	Route::put('/admin/site-settings', [SiteSettingsController::class,'update'])
 		->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class])
 		->name('admin.site-settings.update');
+	Route::get('/admin/entitlements', [EntitlementController::class, 'index'])->name('admin.entitlements.index');
+	Route::post('/admin/entitlements/grant', [EntitlementController::class, 'grant'])->name('admin.entitlements.grant');
+	Route::put('/admin/entitlements/enforcement', [EntitlementController::class, 'updateEnforcement'])->name('admin.entitlements.enforcement');
+	Route::get('/admin/job-matching', [JobMatchingController::class, 'edit'])->name('admin.job-matching.edit');
+	Route::put('/admin/job-matching', [JobMatchingController::class, 'update'])->name('admin.job-matching.update');
 	Route::get('/admin/command/{section}/{view?}', [CommandCenterController::class, 'show'])->name('admin.command.show');
 	Route::get('/admin/companies', [CompanyController::class, 'index'])->name('admin.companies.index');
 	Route::get('/admin/companies/{company}/edit', [CompanyController::class, 'edit'])->name('admin.companies.edit');
@@ -239,15 +250,29 @@ Route::middleware('auth')->group(function (): void {
 	Route::put('/employer/ai-configuration', [EmployerPortalController::class, 'updateAiConfiguration'])->name('employer.ai-configuration.update');
 	Route::post('/employer/ai-configuration/test', [EmployerPortalController::class, 'testAiConfiguration'])->name('employer.ai-configuration.test');
 	Route::delete('/employer/ai-configuration', [EmployerPortalController::class, 'removeAiConfiguration'])->name('employer.ai-configuration.remove');
+	Route::get('/employer/subscription', [EmployerSubscriptionController::class, 'index'])->name('employer.subscription');
 	Route::resource('employer/jobs', EmployerJobController::class)->except(['show'])->names('employer.jobs');
-	Route::get('/employer/jobs/{job}/applicants', [RecruitmentController::class,'show'])->name('employer.jobs.applicants');
-	Route::post('/employer/jobs/{job}/applications/{application}/status', [RecruitmentController::class,'status'])->name('employer.applications.status');
-	Route::post('/employer/jobs/{job}/applications/{application}/interview', [RecruitmentController::class,'interview'])->name('employer.applications.interview');
-	Route::post('/employer/jobs/{job}/applications/{application}/offer', [RecruitmentController::class,'offer'])->name('employer.applications.offer');
+	Route::get('/employer/jobs/{job}/applicants', [RecruitmentController::class,'show'])->middleware('subscription')->name('employer.jobs.applicants');
+	Route::post('/employer/jobs/{job}/applications/{application}/status', [RecruitmentController::class,'status'])->middleware('subscription')->name('employer.applications.status');
+	Route::post('/employer/jobs/{job}/applications/{application}/interview', [RecruitmentController::class,'interview'])->middleware('subscription')->name('employer.applications.interview');
+	Route::post('/employer/jobs/{job}/applications/{application}/offer', [RecruitmentController::class,'offer'])->middleware('subscription')->name('employer.applications.offer');
 	Route::get('/job-seeker', SeekerDashboardController::class)->name('seeker.dashboard');
 	Route::post('/job-seeker/jobs/{job}/apply', [SeekerDashboardController::class, 'apply'])->name('seeker.jobs.apply');
+	// Apply All. Throttled hard: the whole point is that one tap creates many
+	// applications, so a loop here is a loop on the employers' inboxes.
+	Route::post('/job-seeker/jobs/apply-all', [SeekerDashboardController::class, 'applyAll'])
+		->middleware('throttle:5,10')
+		->name('seeker.jobs.apply-all');
 	Route::delete('/job-seeker/applications/{application}/withdraw', [SeekerDashboardController::class, 'withdraw'])->name('seeker.applications.withdraw');
-	Route::get('/job-seeker/profile', [SeekerProfileController::class, 'edit'])->name('seeker.profile.edit');
+	// Resume-first onboarding: upload -> read -> check -> matched jobs -> Apply All.
+	Route::get('/job-seeker/resume', [ResumeIntakeController::class, 'choose'])->name('seeker.resume.choose');
+	Route::post('/job-seeker/resume/upload', [ResumeIntakeController::class, 'upload'])->name('seeker.resume.upload');
+	Route::get('/job-seeker/resume/review', [ResumeIntakeController::class, 'review'])->name('seeker.resume.review');
+	Route::post('/job-seeker/resume/review', [ResumeIntakeController::class, 'confirm'])->name('seeker.resume.confirm');
+	Route::get('/job-seeker/resume/matches', [ResumeIntakeController::class, 'matches'])->name('seeker.resume.matches');
+	// View-first profile; the long form moved to /edit behind it.
+	Route::get('/job-seeker/profile', [SeekerProfileController::class, 'show'])->name('seeker.profile.show');
+	Route::get('/job-seeker/profile/edit', [SeekerProfileController::class, 'edit'])->name('seeker.profile.edit');
 	Route::put('/job-seeker/profile', [SeekerProfileController::class, 'update'])->name('seeker.profile.update');
 	Route::post('/job-seeker/resume/parse', [SeekerProfileController::class, 'parseResume'])->name('seeker.resume.parse');
 	Route::post('/job-seeker/jobs/{job}/save', [SavedJobController::class, 'toggle'])->name('seeker.jobs.save');

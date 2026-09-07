@@ -95,16 +95,41 @@
                                     </div>
                                 </template>
 
-                                {{-- Suggestion Chips on welcome message --}}
+                                {{--
+                                    Intent cards on the opening message.
+
+                                    TickBig's AgentAmbo greets you and offers four
+                                    doors rather than an empty box, which is the fix
+                                    for "what do I even type". Ours are the four
+                                    things this platform actually does; theirs
+                                    include vendors and clients, which we do not.
+
+                                    Rendered here rather than in resources/js so they
+                                    can change without a bundle rebuild - there is no
+                                    Node step in this project. They reuse the
+                                    component's own sendSuggestion(), so tapping a
+                                    card is exactly a typed question.
+                                --}}
                                 <template x-if="msg.suggestions && msg.suggestions.length > 0">
-                                    <div class="flex flex-col gap-1.5 pt-1">
-                                        <span class="text-[10px] font-bold text-text-muted uppercase tracking-wider">Suggested Questions:</span>
-                                        <template x-for="sug in msg.suggestions" :key="sug">
-                                            <button @click="sendSuggestion(sug)" class="text-left px-3 py-1.5 rounded-xl bg-white hover:bg-blue-50 border border-border hover:border-accent text-xs text-text-secondary hover:text-accent transition-all shadow-2xs cursor-pointer flex items-center gap-1.5">
-                                                <span class="text-accent">✦</span>
-                                                <span x-text="sug" class="truncate"></span>
-                                            </button>
-                                        </template>
+                                    <div class="pt-1 space-y-1.5">
+                                        <span class="text-[10px] font-bold text-text-muted uppercase tracking-wider">What can I help with?</span>
+                                        <div class="grid grid-cols-2 gap-1.5">
+                                            @foreach ([
+                                                ['label' => 'Find a job', 'seed' => 'Find jobs that match my profile', 'icon' => 'M21 13.255A23.9 23.9 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z'],
+                                                ['label' => 'Improve my resume', 'seed' => 'How can I improve my resume so it matches more jobs?', 'icon' => 'M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z'],
+                                                ['label' => 'Hire talent', 'seed' => 'I want to hire. How do I post a vacancy and find candidates?', 'icon' => 'M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z'],
+                                                ['label' => 'My applications', 'seed' => 'What is happening with the jobs I have applied to?', 'icon' => 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z'],
+                                            ] as $intent)
+                                                <button type="button"
+                                                        @click="sendSuggestion(@js($intent['seed']))"
+                                                        class="text-left p-2.5 rounded-xl bg-white hover:bg-blue-50 border border-border hover:border-accent transition-all shadow-2xs cursor-pointer">
+                                                    <span class="w-6 h-6 rounded-lg bg-accent/10 text-accent grid place-items-center mb-1.5">
+                                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="{{ $intent['icon'] }}"/></svg>
+                                                    </span>
+                                                    <span class="block text-[11px] font-bold text-navy leading-tight">{{ $intent['label'] }}</span>
+                                                </button>
+                                            @endforeach
+                                        </div>
                                     </div>
                                 </template>
                             </div>

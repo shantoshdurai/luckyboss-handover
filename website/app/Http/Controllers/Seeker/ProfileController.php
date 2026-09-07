@@ -18,6 +18,80 @@ class ProfileController extends Controller
         abort_unless(auth()->user()?->hasRole('job-seeker'), 403);
     }
 
+    /**
+     * The profile as a page you read, not a form you are permanently inside.
+     *
+     * The editor is still `edit()` — this adds the missing half. Every field
+     * lived in one 396-line always-editing form, which meant a candidate could
+     * never simply *look* at what employers see, and had no sense of what was
+     * still blank. TickBig's profile is view-first with section tabs and a
+     * resume card pinned above; this is that idea in our own language.
+     *
+     * Sections are computed here rather than in Blade so "what is filled in"
+     * has exactly one definition, shared by the tabs and the completion ring.
+     */
+    public function show(): View
+    {
+        $this->candidate();
+
+        $user = auth()->user()->load('candidateProfile');
+        $profile = $user->candidateProfile;
+        $skills = $this->skillList($profile);
+
+        $sections = [
+            'about' => [
+                'label' => 'About',
+                'filled' => filled($profile?->professional_summary),
+                'anchor' => null,
+            ],
+            'experience' => [
+                'label' => 'Experience',
+                'filled' => filled($profile?->current_title) && $profile?->years_experience !== null,
+                'anchor' => null,
+            ],
+            'skills' => [
+                'label' => 'Skills',
+                'filled' => count($skills) > 0,
+                'anchor' => 'skills-section',
+            ],
+            'documents' => [
+                'label' => 'Documents',
+                'filled' => filled($profile?->resume_file_name),
+                'anchor' => 'resume-section',
+            ],
+            'preferences' => [
+                'label' => 'Preferences',
+                'filled' => filled($profile?->preferred_location) || $profile?->expected_salary > 0,
+                'anchor' => null,
+            ],
+        ];
+
+        return view('seeker.profile.show', [
+            'user' => $user,
+            'profile' => $profile,
+            'skills' => $skills,
+            'sections' => $sections,
+            // Recomputed on every view rather than read from the stored column,
+            // which only updates when the big form is submitted and so drifts
+            // the moment anything is saved from elsewhere - the resume flow, for
+            // one.
+            'completion' => (int) round(collect($sections)->where('filled', true)->count() / max(1, count($sections)) * 100),
+        ]);
+    }
+
+    /** @return list<string> */
+    private function skillList(?\App\Models\CandidateProfile $profile): array
+    {
+        $raw = $profile?->skills ?: ($profile?->resume_data['skills'] ?? []);
+
+        if (is_string($raw)) {
+            $decoded = json_decode($raw, true);
+            $raw = is_array($decoded) ? $decoded : array_map('trim', explode(',', $raw));
+        }
+
+        return is_array($raw) ? array_values(array_filter(array_map('strval', $raw))) : [];
+    }
+
     public function edit(): View
     {
         $this->candidate();

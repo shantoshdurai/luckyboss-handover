@@ -10,13 +10,41 @@
             <div>
                 <div class="flex items-center gap-2">
                     <h2 class="text-xl font-bold text-navy">{{ $user->name }}</h2>
-                    <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                        <svg class="w-3 h-3 text-emerald-600" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg>
-                        Verified Candidate
-                    </span>
+                    {{--
+                        This said "Verified Candidate" for everyone, including an
+                        account created a minute ago. Nothing on the platform
+                        verifies a candidate, so the badge now reports the one
+                        thing we do check — that they confirmed their email — and
+                        says nothing at all when they have not.
+                    --}}
+                    @if($user->email_verified_at)
+                        <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                            <svg class="w-3 h-3 text-emerald-600" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg>
+                            Email verified
+                        </span>
+                    @endif
                 </div>
+                {{--
+                    Only what the candidate actually told us. This line used to
+                    fall back to "Warehouse Coordinator • Singapore • 4 Years
+                    Experience" for anyone who had filled nothing in, so a brand
+                    new seeker was shown a career they had never had — and the
+                    same invented values were what the old matcher scored them on.
+                --}}
+                @php
+                    $knownFacts = array_filter([
+                        $profile?->current_title,
+                        $profile?->current_location,
+                        $profile?->years_experience === null ? null : $profile->years_experience.' years experience',
+                    ]);
+                @endphp
                 <p class="text-xs text-text-secondary mt-1">
-                    {{ $profile?->current_title ?: 'Warehouse Coordinator' }} &bull; {{ $profile?->current_location ?: 'Singapore' }} &bull; {{ $profile?->years_experience ?? 4 }} Years Experience
+                    @if($knownFacts)
+                        {{ implode(' • ', $knownFacts) }}
+                    @else
+                        <a href="{{ route('seeker.profile.edit') }}" class="text-accent font-bold hover:underline">Add your role and experience</a>
+                        to start seeing matched jobs
+                    @endif
                 </p>
             </div>
 
@@ -114,10 +142,16 @@
             <div class="bg-white rounded-2xl border border-border p-6 shadow-xs space-y-6">
                 <div class="flex items-center justify-between border-b border-border pb-4">
                     <div>
-                        <h3 class="text-lg font-bold text-navy">AI Matched Vacancies</h3>
-                        <p class="text-xs text-text-muted mt-0.5">Matched according to your skills, experience, and location preferences</p>
+                        <h3 class="text-lg font-bold text-navy">Your Matched Jobs</h3>
+                        <p class="text-xs text-text-muted mt-0.5">Scored against your skills, experience, location and expected pay</p>
                     </div>
                 </div>
+
+                @include('seeker.partials.match-state', [
+                    'matchCount' => $allMatchingJobs->count(),
+                    'applyAllCount' => $allMatchingJobs->whereNotIn('id', $appliedJobIds)->count(),
+                    'showApplyAll' => true,
+                ])
 
                 <div class="divide-y divide-border">
                     @forelse($allMatchingJobs as $job)
@@ -130,6 +164,7 @@
                                     <span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-slate-100 text-slate-700">
                                         {{ str($job->work_mode)->headline() }}
                                     </span>
+                                    @include('seeker.partials.match-badge', ['job' => $job])
                                 </div>
 
                                 <p class="text-xs text-text-secondary">
@@ -167,9 +202,9 @@
                             </div>
                         </div>
                     @empty
-                        <div class="text-center py-12 text-text-muted text-xs">
-                            No matching vacancies right now.
-                        </div>
+                        {{-- Handled above by seeker.partials.match-state, which says
+                             *why* the list is empty: no profile to match on, or
+                             nothing above the admin threshold. --}}
                     @endforelse
                 </div>
             </div>
@@ -195,6 +230,7 @@
                                     <span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-slate-100 text-slate-700">
                                         {{ str($job->work_mode)->headline() }}
                                     </span>
+                                    @include('seeker.partials.match-badge', ['job' => $job])
                                 </div>
 
                                 <p class="text-xs text-text-secondary">
@@ -311,13 +347,20 @@
             <div class="bg-white rounded-2xl border border-border p-6 shadow-xs space-y-4">
                 <div class="flex items-center justify-between border-b border-border pb-3">
                     <div>
-                        <h3 class="text-base font-bold text-navy">Curated Job Openings</h3>
-                        <p class="text-xs text-text-muted mt-0.5">Verified vacancies based on your location and background</p>
+                        <h3 class="text-base font-bold text-navy">Your Matched Jobs</h3>
+                        <p class="text-xs text-text-muted mt-0.5">Scored against your skills, experience, location and expected pay</p>
                     </div>
-                    <a href="{{ route('seeker.dashboard', ['tab' => 'matching']) }}" class="text-xs font-bold text-accent hover:underline">
-                        View all matches &rarr;
-                    </a>
+                    @if($matchReadiness['ready'] && $allMatchingJobs->isNotEmpty())
+                        <a href="{{ route('seeker.dashboard', ['tab' => 'matching']) }}" class="text-xs font-bold text-accent hover:underline">
+                            View all {{ $allMatchingJobs->count() }} matches &rarr;
+                        </a>
+                    @endif
                 </div>
+
+                @include('seeker.partials.match-state', [
+                    'matchCount' => $allMatchingJobs->count(),
+                    'showApplyAll' => false,
+                ])
 
                 <div class="divide-y divide-border">
                     @forelse($recommendedJobs as $job)
@@ -330,6 +373,7 @@
                                     <span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-slate-100 text-slate-700">
                                         {{ str($job->work_mode)->headline() }}
                                     </span>
+                                    @include('seeker.partials.match-badge', ['job' => $job])
                                 </div>
 
                                 <p class="text-xs text-text-secondary">
@@ -367,9 +411,7 @@
                             </div>
                         </div>
                     @empty
-                        <div class="text-center py-8 text-text-muted text-xs">
-                            No vacancies listed right now.
-                        </div>
+                        {{-- Handled above by seeker.partials.match-state. --}}
                     @endforelse
                 </div>
             </div>
@@ -383,20 +425,48 @@
 
                 <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs">
                     <div class="p-3 bg-slate-50 rounded-xl">
+                    {{--
+                        Every one of these four used to invent its value when the
+                        candidate had not filled it in: notice period "Immediate",
+                        expected salary "SGD 3,500", country "Singapore (SG)", and
+                        a resume status of "Verified & Active" that was hardcoded
+                        and shown even to candidates with no resume on file. A
+                        blank the candidate can go and fill is useful; a plausible
+                        number they never typed is not.
+                    --}}
+                    <div class="p-3 bg-slate-50 rounded-xl">
                         <span class="text-text-muted block text-[11px]">Notice Period</span>
-                        <span class="font-bold text-navy mt-0.5 block">{{ $profile?->notice_period ?: 'Immediate' }}</span>
+                        <span class="font-bold mt-0.5 block {{ $profile?->notice_period ? 'text-navy' : 'text-slate-400' }}">
+                            {{ $profile?->notice_period ?: 'Not set' }}
+                        </span>
                     </div>
                     <div class="p-3 bg-slate-50 rounded-xl">
                         <span class="text-text-muted block text-[11px]">Expected Salary</span>
-                        <span class="font-bold text-navy mt-0.5 block">{{ $profile?->preferred_currency ?: 'SGD' }} {{ $profile?->expected_salary ? number_format($profile->expected_salary) : '3,500' }}</span>
+                        <span class="font-bold mt-0.5 block {{ $profile?->expected_salary ? 'text-navy' : 'text-slate-400' }}">
+                            @if($profile?->expected_salary)
+                                {{ $profile->preferred_currency ?: '' }} {{ number_format($profile->expected_salary) }}
+                            @else
+                                Not set
+                            @endif
+                        </span>
                     </div>
                     <div class="p-3 bg-slate-50 rounded-xl">
                         <span class="text-text-muted block text-[11px]">Preferred Country</span>
-                        <span class="font-bold text-navy mt-0.5 block">{{ $profile?->country_code ?: 'Singapore (SG)' }}</span>
+                        <span class="font-bold mt-0.5 block {{ $profile?->country_code ? 'text-navy' : 'text-slate-400' }}">
+                            {{ $profile?->country_code ?: 'Not set' }}
+                        </span>
                     </div>
                     <div class="p-3 bg-slate-50 rounded-xl">
-                        <span class="text-text-muted block text-[11px]">Resume Status</span>
-                        <span class="font-bold text-emerald-600 mt-0.5 block">Verified & Active</span>
+                        <span class="text-text-muted block text-[11px]">Resume</span>
+                        @if($profile?->resume_file_name)
+                            <span class="font-bold text-emerald-600 mt-0.5 block truncate" title="{{ $profile->resume_file_name }}">
+                                {{ $profile->resume_file_name }}
+                            </span>
+                        @else
+                            <a href="{{ route('seeker.profile.edit') }}" class="font-bold text-accent mt-0.5 block hover:underline">
+                                Not uploaded
+                            </a>
+                        @endif
                     </div>
                 </div>
             </div>

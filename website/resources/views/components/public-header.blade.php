@@ -34,28 +34,26 @@
                     Home
                 </a>
 
-                {{-- 2. Find Jobs --}}
-                <a href="{{ route('jobs.index') }}" 
-                   class="px-3.5 py-1.5 text-xs rounded-xl transition-all duration-200 transform hover:-translate-y-0.5 {{ request()->routeIs('jobs.*') ? 'bg-navy text-white shadow-xs font-bold' : 'font-semibold text-slate-700 hover:text-navy hover:bg-slate-200/70' }}">
-                    Find Jobs
+                {{-- 2. Explore — scrolls the home page rather than leaving it.
+                     From any other page it goes home first and lands on the
+                     same section. --}}
+                <a href="{{ request()->routeIs('home') ? '#browse' : route('home') . '#browse' }}"
+                   class="px-3.5 py-1.5 text-xs rounded-xl transition-all duration-200 transform hover:-translate-y-0.5 font-semibold text-slate-700 hover:text-navy hover:bg-slate-200/70">
+                    Explore
                 </a>
 
-                {{-- 3. Job Categories --}}
-                <a href="{{ route('categories.index') }}" 
-                   class="px-3.5 py-1.5 text-xs rounded-xl transition-all duration-200 transform hover:-translate-y-0.5 {{ request()->routeIs('categories.*') ? 'bg-navy text-white shadow-xs font-bold' : 'font-semibold text-slate-700 hover:text-navy hover:bg-slate-200/70' }}">
-                    Job Categories
+                {{-- 3. Opportunities — the vacancies themselves, behind sign-in
+                     for guests. Sir asked for TickBig's behaviour here: the
+                     listings are what the account is for. --}}
+                <a href="{{ auth()->check() ? route('jobs.index') : route('login') }}"
+                   class="px-3.5 py-1.5 text-xs rounded-xl transition-all duration-200 transform hover:-translate-y-0.5 {{ request()->routeIs('jobs.*') ? 'bg-navy text-white shadow-xs font-bold' : 'font-semibold text-slate-700 hover:text-navy hover:bg-slate-200/70' }}">
+                    Opportunities
                 </a>
 
                 {{-- 4. Employers --}}
-                <a href="{{ route('employers.public') }}" 
+                <a href="{{ route('employers.public') }}"
                    class="px-3.5 py-1.5 text-xs rounded-xl transition-all duration-200 transform hover:-translate-y-0.5 {{ request()->routeIs('employers.*') ? 'bg-navy text-white shadow-xs font-bold' : 'font-semibold text-slate-700 hover:text-navy hover:bg-slate-200/70' }}">
                     Employers
-                </a>
-
-                {{-- 5. Job Seekers --}}
-                <a href="{{ route('seekers.public') }}" 
-                   class="px-3.5 py-1.5 text-xs rounded-xl transition-all duration-200 transform hover:-translate-y-0.5 {{ request()->routeIs('seekers.*') ? 'bg-navy text-white shadow-xs font-bold' : 'font-semibold text-slate-700 hover:text-navy hover:bg-slate-200/70' }}">
-                    Job Seekers
                 </a>
 
                 {{-- 6. Blog --}}
@@ -134,10 +132,11 @@
             class="xl:hidden border-t border-slate-200 bg-white text-slate-800 py-5 space-y-1 rounded-b-2xl shadow-xl"
         >
             <a href="{{ route('home') }}" class="block px-4 py-2 text-sm font-bold text-slate-700 hover:bg-slate-100 rounded-xl">Home</a>
-            <a href="{{ route('jobs.index') }}" class="block px-4 py-2 text-sm font-bold text-slate-700 hover:bg-slate-100 rounded-xl">Find Jobs</a>
-            <a href="{{ route('categories.index') }}" class="block px-4 py-2 text-sm font-bold text-slate-700 hover:bg-slate-100 rounded-xl">Job Categories</a>
+            {{-- Mirrors the desktop nav. It kept the old five links after the
+                 desktop set was cut, so a phone saw a different site. --}}
+            <a href="{{ request()->routeIs('home') ? '#browse' : route('home') . '#browse' }}" class="block px-4 py-2 text-sm font-bold text-slate-700 hover:bg-slate-100 rounded-xl">Explore</a>
+            <a href="{{ auth()->check() ? route('jobs.index') : route('login') }}" class="block px-4 py-2 text-sm font-bold text-slate-700 hover:bg-slate-100 rounded-xl">Opportunities</a>
             <a href="{{ route('employers.public') }}" class="block px-4 py-2 text-sm font-bold text-slate-700 hover:bg-slate-100 rounded-xl">Employers</a>
-            <a href="{{ route('seekers.public') }}" class="block px-4 py-2 text-sm font-bold text-slate-700 hover:bg-slate-100 rounded-xl">Job Seekers</a>
             <a href="{{ route('blogs.index') }}" class="block px-4 py-2 text-sm font-bold text-slate-700 hover:bg-slate-100 rounded-xl">Blog</a>
             
             <div class="border-t border-slate-200 pt-3 mt-3 px-4 flex flex-col gap-2">

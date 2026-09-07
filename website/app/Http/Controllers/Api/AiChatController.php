@@ -59,6 +59,19 @@ STRICT RESPONSE GUIDELINES (Goldilocks Rule - Not too short, not too long):
                         ]
                     ]);
 
+                // Spec §67: every AI call records its tokens and estimated cost,
+                // success or not. The tokens were spent either way, and a log
+                // that counts only successes understates what AI costs us —
+                // which is the number the pricing decision depends on.
+                app(\App\Services\AiUsageRecorder::class)->record(
+                    feature: 'ai_chat',
+                    user: $request->user(),
+                    model: $geminiModel,
+                    promptTokens: (int) $response->json('usageMetadata.promptTokenCount', 0),
+                    completionTokens: (int) $response->json('usageMetadata.candidatesTokenCount', 0),
+                    status: $response->successful() ? 'success' : 'failed',
+                );
+
                 if ($response->successful()) {
                     $replyText = $response->json('candidates.0.content.parts.0.text');
                     if (!empty(trim($replyText))) {
