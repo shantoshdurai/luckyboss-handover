@@ -4,6 +4,10 @@ Laravel 12 recruitment portal for Singapore, Malaysia and India: a public job
 board, a candidate portal with the Lucky AI agent, an employer ATS with the
 hiring agent, and a super-admin back office.
 
+This is the `website/` half of the handover package. The Flutter apps are in
+`apps/`, the built Android APKs in `apks/`, and deployment notes in `DEPLOY.md`
+and `MYSQL_SWITCH.md` at the repository root.
+
 **Running it needs PHP only.** There is no Node step — the CSS and JavaScript are
 pre-compiled into `public/build/`, so `composer install` and `php artisan serve`
 is the whole of it.
@@ -16,7 +20,7 @@ You need **PHP 8.2+** and **Composer**. Nothing else.
 
 ```bash
 git clone https://github.com/shantoshdurai/luckyboss-handover.git
-cd luckyboss-handover
+cd luckyboss-handover/website
 composer install
 cp .env.example .env
 php artisan key:generate
@@ -122,4 +126,5 @@ routes/web.php          Web routes
 routes/api.php          Mobile app API (Sanctum)
 ```
 
-The mobile apps live in a separate repository.
+The Flutter apps and the built APKs sit beside this directory in `apps/` and
+`apks/`.
