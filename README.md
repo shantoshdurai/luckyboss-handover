@@ -56,7 +56,10 @@ Three accounts are seeded. **Passwords are sent separately.**
 | Employer | `employer@luckyboss.test` | `/employer` — the hiring agent |
 | Candidate | `candidate@luckyboss.test` | `/job-seeker` — Lucky AI |
 
-Sign in at **/login**.
+Sign in at **/login** for all three. The Job seeker / Employer toggle on that
+page does not apply to the admin — the super admin always lands on `/admin`.
+There is also a dedicated **/admin/login** with no toggle, if you would rather go
+straight there.
 
 ---
 
