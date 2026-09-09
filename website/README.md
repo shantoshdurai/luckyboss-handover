@@ -59,9 +59,13 @@ The seeded accounts are below. Passwords are sent separately.
 | Employer | `employer@luckyboss.test` | `/employer` — Hiring AI |
 | Candidate | `candidate@luckyboss.test` | `/job-seeker` — Lucky AI |
 
-Sign in at **/login**. The "I am a" toggle is only a preference — it decides
-where you land if an account holds both roles, and it never refuses a correct
-password.
+Sign in at **/login** for all three. The "I am a" toggle is only a preference —
+it decides where you land if an account holds both roles, never which accounts
+may sign in, and it does not apply to the admin at all: the super admin always
+lands on `/admin` whichever way it is set.
+
+There is also a dedicated **/admin/login** with no toggle on it, if you would
+rather go straight there.
 
 ---
 
