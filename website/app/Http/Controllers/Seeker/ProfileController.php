@@ -18,6 +18,80 @@ class ProfileController extends Controller
         abort_unless(auth()->user()?->hasRole('job-seeker'), 403);
     }
 
+    /**
+     * The profile as a page you read, not a form you are permanently inside.
+     *
+     * The editor is still `edit()` — this adds the missing half. Every field
+     * lived in one 396-line always-editing form, which meant a candidate could
+     * never simply *look* at what employers see, and had no sense of what was
+     * still blank. TickBig's profile is view-first with section tabs and a
+     * resume card pinned above; this is that idea in our own language.
+     *
+     * Sections are computed here rather than in Blade so "what is filled in"
+     * has exactly one definition, shared by the tabs and the completion ring.
+     */
+    public function show(): View
+    {
+        $this->candidate();
+
+        $user = auth()->user()->load('candidateProfile');
+        $profile = $user->candidateProfile;
+        $skills = $this->skillList($profile);
+
+        $sections = [
+            'about' => [
+                'label' => 'About',
+                'filled' => filled($profile?->professional_summary),
+                'anchor' => null,
+            ],
+            'experience' => [
+                'label' => 'Experience',
+                'filled' => filled($profile?->current_title) && $profile?->years_experience !== null,
+                'anchor' => null,
+            ],
+            'skills' => [
+                'label' => 'Skills',
+                'filled' => count($skills) > 0,
+                'anchor' => 'skills-section',
+            ],
+            'documents' => [
+                'label' => 'Documents',
+                'filled' => filled($profile?->resume_file_name),
+                'anchor' => 'resume-section',
+            ],
+            'preferences' => [
+                'label' => 'Preferences',
+                'filled' => filled($profile?->preferred_location) || $profile?->expected_salary > 0,
+                'anchor' => null,
+            ],
+        ];
+
+        return view('seeker.profile.show', [
+            'user' => $user,
+            'profile' => $profile,
+            'skills' => $skills,
+            'sections' => $sections,
+            // Recomputed on every view rather than read from the stored column,
+            // which only updates when the big form is submitted and so drifts
+            // the moment anything is saved from elsewhere - the resume flow, for
+            // one.
+            'completion' => (int) round(collect($sections)->where('filled', true)->count() / max(1, count($sections)) * 100),
+        ]);
+    }
+
+    /** @return list<string> */
+    private function skillList(?\App\Models\CandidateProfile $profile): array
+    {
+        $raw = $profile?->skills ?: ($profile?->resume_data['skills'] ?? []);
+
+        if (is_string($raw)) {
+            $decoded = json_decode($raw, true);
+            $raw = is_array($decoded) ? $decoded : array_map('trim', explode(',', $raw));
+        }
+
+        return is_array($raw) ? array_values(array_filter(array_map('strval', $raw))) : [];
+    }
+
     public function edit(): View
     {
         $this->candidate();
@@ -133,6 +207,75 @@ class ProfileController extends Controller
         $profile->update($data);
 
         return back()->with('success', 'Candidate profile and resume saved successfully.');
+    }
+
+    /**
+     * Save one section of the profile, in place.
+     *
+     * The view-first profile (W2) shipped with every pencil handing off to the
+     * 396-line form at /edit — which meant "fix one wrong line in your summary"
+     * cost a full-page trip through every field you had already filled in. This
+     * saves exactly the section that was opened and nothing else, so a section
+     * the candidate did not touch cannot be blanked by a form that happened to
+     * render it empty.
+     *
+     * Deliberately NOT a merge into update(): that method validates all 21
+     * fields as a set, and reusing it here would make every section save depend
+     * on the others being present and valid.
+     */
+    public function updateSection(Request $request, string $section): RedirectResponse
+    {
+        $this->candidate();
+        $user = auth()->user();
+
+        $rules = [
+            'about' => [
+                'professional_summary' => ['nullable', 'string', 'max:5000'],
+            ],
+            'experience' => [
+                'current_title' => ['nullable', 'string', 'max:180'],
+                'years_experience' => ['nullable', 'integer', 'min:0', 'max:70'],
+                'notice_period' => ['nullable', 'string', 'max:80'],
+                'qualification' => ['nullable', 'string', 'max:180'],
+                'current_location' => ['nullable', 'string', 'max:180'],
+            ],
+            'skills' => [
+                'skills' => ['nullable', 'string', 'max:2000'],
+            ],
+            'preferences' => [
+                'preferred_location' => ['nullable', 'string', 'max:180'],
+                'expected_salary' => ['nullable', 'numeric', 'min:0'],
+                'preferred_currency' => ['nullable', 'string', 'size:3'],
+                'availability' => ['nullable', 'string', 'max:120'],
+            ],
+        ];
+
+        // Documents is not here on purpose: a document is replaced through the
+        // resume flow, which stores the file, parses it and asks the candidate
+        // to check what was read. A bare file input here would skip all of that.
+        abort_unless(isset($rules[$section]), 404);
+
+        $data = $request->validate($rules[$section]);
+
+        $profile = $user->candidateProfile()->firstOrCreate([], ['country_code' => 'SG', 'profile_completion' => 0]);
+
+        if ($section === 'skills') {
+            $skills = array_values(array_filter(array_map('trim', explode(',', (string) ($data['skills'] ?? '')))));
+
+            $resumeData = is_array($profile->resume_data) ? $profile->resume_data : [];
+            $resumeData['skills'] = $skills;
+
+            // Written to both places because JobMatchService reads both. Writing
+            // one and not the other is how a candidate ends up with skills on
+            // screen and no matches.
+            $profile->update(['skills' => $skills, 'resume_data' => $resumeData]);
+        } else {
+            $profile->update($data);
+        }
+
+        return back()
+            ->with('success', 'Saved.')
+            ->with('open_section', $section);
     }
 
     public function parseResume(Request $request): \Illuminate\Http\JsonResponse

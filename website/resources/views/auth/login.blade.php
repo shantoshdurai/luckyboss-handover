@@ -30,11 +30,27 @@
         {{-- A single line of chrome. Logo out, sign-up in. --}}
         <header class="w-full">
             <div class="max-w-6xl mx-auto px-6 h-20 flex items-center justify-between gap-4">
-                <a href="{{ route('home') }}" class="flex items-center flex-shrink-0" aria-label="Luckyboss home">
-                    <img src="{{ asset($branding['logo_url'] ?? 'images/lucky-boss-logo-transparent.png') }}"
-                         alt="Luckyboss Employment Agency Pte. Ltd"
-                         class="h-9 sm:h-11 w-auto object-contain">
-                </a>
+                {{-- Back and the mark travel together on the left. Left as three
+                     items in a justify-between row, the logo floated to the
+                     centre of the page, which reads as decoration rather than as
+                     the way home. The mark is also the larger of the two: it is
+                     the thing people recognise. --}}
+                <div class="flex items-center gap-4 min-w-0">
+                    <a href="{{ route('home') }}"
+                       class="inline-flex items-center gap-1.5 text-sm font-bold text-slate-500 hover:text-navy transition-colors shrink-0"
+                       aria-label="Back to Luckyboss">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/>
+                        </svg>
+                        <span>Back</span>
+                    </a>
+
+                    <a href="{{ route('home') }}" class="flex items-center flex-shrink-0" aria-label="Luckyboss home">
+                        <img src="{{ asset($branding['logo_url'] ?? 'images/lucky-boss-logo-transparent.png') }}"
+                             alt="Luckyboss Employment Agency Pte. Ltd"
+                             class="h-11 sm:h-14 w-auto object-contain">
+                    </a>
+                </div>
 
                 @unless($adminLogin ?? false)
                     {{-- On a narrow screen the full sentence collides with the
@@ -49,18 +65,45 @@
             </div>
         </header>
 
-        <main class="flex-1 flex items-start justify-center px-6 pb-20 pt-4 sm:pt-10">
-            <div class="w-full" style="max-width:26rem;">
+        @php $selectedRole = old('login_as', 'job-seeker'); @endphp
 
+        {{--
+            `role` is held out here, not on the toggle itself, because the
+            sign-up line under the card has to follow it: pick "Job seeker" and
+            the offer below should be a seeker account, pick "Employer" and it
+            should be registering a company. With the state scoped to the toggle
+            the card could react and the line beneath it could not, which is why
+            only the employer offer was ever shown.
+        --}}
+        <main class="flex-1 flex items-start justify-center px-6 pb-20 pt-4 sm:pt-10">
+            <div class="w-full" style="max-width:26rem;"
+                 x-data="{ role: '{{ $selectedRole }}' }">
+
+                {{--
+                    Two levels, the way tickbig.com splits them: the page says
+                    what it is, the card says hello.
+
+                    This previously used "Welcome back" as the 32px page title,
+                    which read as a greeting where the label should be — arriving
+                    from "Find a job" you were told welcome back before being
+                    told you had landed on sign-in. The heading now names the
+                    page and the greeting shrinks into the card.
+                --}}
                 <div class="text-center mb-7">
-                    <h1 class="text-[28px] sm:text-[32px] font-heading font-bold leading-tight" style="color:#031F49;">
-                        {{ $adminLogin ?? false ? 'Administrator sign in' : 'Welcome back' }}
+                    <h1 class="text-3xl sm:text-3xl font-heading font-bold leading-tight" style="color:#031F49;">
+                        {{ $adminLogin ?? false ? 'Administrator sign in' : 'Sign in' }}
                     </h1>
                     <span class="inline-block mt-3 rounded-full" style="width:38px;height:3px;background:#18A66A;"></span>
                 </div>
 
                 <div class="rounded-2xl px-6 sm:px-8 py-8"
                      style="background:#FFFFFF;border:1px solid #E4EAF2;box-shadow:0 1px 2px rgba(3,31,73,.05),0 12px 32px -20px rgba(3,31,73,.28);">
+
+                    @unless($adminLogin ?? false)
+                        <p class="text-center font-heading font-bold mb-6" style="color:#18A66A;font-size:17px;">
+                            Welcome back
+                        </p>
+                    @endunless
 
                     @if ($errors->any())
                         <div class="mb-5 rounded-xl px-4 py-3 text-sm"
@@ -75,12 +118,13 @@
                         @csrf
 
                         @unless($adminLogin ?? false)
-                            @php $selectedRole = old('login_as', 'job-seeker'); @endphp
-
                             {{-- Inline styles: the brand tokens are not in the
                                  prebuilt Tailwind bundle, and this project runs
-                                 with no Node build step. --}}
-                            <div x-data="{ role: '{{ $selectedRole }}' }">
+                                 with no Node build step.
+
+                                 `role` lives on the page wrapper above, so the
+                                 sign-up line under the card can read it too. --}}
+                            <div>
                                 <input type="hidden" name="login_as" :value="role">
 
                                 <span class="block text-xs font-bold uppercase tracking-wider mb-2" style="color:#8494A8;">
@@ -115,7 +159,7 @@
                             </label>
                             <input id="email" name="email" type="email" required autofocus
                                    value="{{ old('email') }}" autocomplete="email"
-                                   class="w-full rounded-xl px-4 py-3 text-[15px] outline-none transition-all"
+                                   class="w-full rounded-xl px-4 py-3 text-sm outline-none transition-all"
                                    style="border:1px solid #E4EAF2;color:#031F49;background:#fff;"
                                    onfocus="this.style.borderColor='#18A66A';this.style.boxShadow='0 0 0 3px rgba(24,166,106,.14)'"
                                    onblur="this.style.borderColor='#E4EAF2';this.style.boxShadow='none'"
@@ -134,7 +178,7 @@
                             <div x-data="{ show: false }" class="relative">
                                 <input id="password" name="password" required autocomplete="current-password"
                                        :type="show ? 'text' : 'password'"
-                                       class="w-full rounded-xl px-4 py-3 pr-11 text-[15px] outline-none transition-all"
+                                       class="w-full rounded-xl px-4 py-3 pr-11 text-sm outline-none transition-all"
                                        style="border:1px solid #E4EAF2;color:#031F49;background:#fff;"
                                        onfocus="this.style.borderColor='#18A66A';this.style.boxShadow='0 0 0 3px rgba(24,166,106,.14)'"
                                        onblur="this.style.borderColor='#E4EAF2';this.style.boxShadow='none'"
@@ -163,7 +207,7 @@
                         </label>
 
                         <button type="submit"
-                                class="w-full rounded-xl py-3.5 font-bold text-[15px] transition-all"
+                                class="w-full rounded-xl py-3.5 font-bold text-sm transition-all"
                                 style="background:#18A66A;color:#fff;box-shadow:0 8px 20px -12px rgba(24,166,106,.9);"
                                 onmouseover="this.style.background='#149257'"
                                 onmouseout="this.style.background='#18A66A'">
@@ -173,7 +217,27 @@
                 </div>
 
                 @unless($adminLogin ?? false)
-                    <p class="text-center text-sm mt-6" style="color:#64748B;">
+                    {{--
+                        Both accounts are offered, and the one shown follows the
+                        toggle above. Previously only the employer line was here,
+                        so a job seeker who could not sign in was invited to
+                        register a company — the wrong door, and the only one on
+                        offer.
+
+                        Deliberately no x-cloak: with scripting off, Alpine never
+                        removes it and both offers would vanish. Without it a
+                        no-JS visitor simply sees both lines, which is correct —
+                        both are real routes — and Alpine narrows to one the
+                        moment it boots.
+                    --}}
+                    <p class="text-center text-sm mt-6" style="color:#64748B;" x-show="role === 'job-seeker'">
+                        Looking for a job?
+                        <a href="{{ route('register.seeker') }}" class="font-semibold hover:underline" style="color:#031F49;">
+                            Create a job seeker account
+                        </a>
+                    </p>
+
+                    <p class="text-center text-sm mt-6" style="color:#64748B;" x-show="role === 'employer'">
                         Hiring?
                         <a href="{{ route('register.employer') }}" class="font-semibold hover:underline" style="color:#031F49;">
                             Register your company

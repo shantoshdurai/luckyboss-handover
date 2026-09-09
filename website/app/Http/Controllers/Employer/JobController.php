@@ -3,10 +3,12 @@
 namespace App\Http\Controllers\Employer;
 
 use App\Http\Controllers\Controller;
+use App\Models\AgentConversation;
 use App\Models\Job;
 use App\Models\JobCategory;
 use App\Models\Company;
 use App\Models\Country;
+use App\Services\HiringScript;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 
@@ -52,12 +54,100 @@ class JobController extends Controller
             ->when($status === 'draft', fn ($query) => $query->where('status', 'draft'))
             ->latest()
             ->paginate(20)->withQueryString();
-        return view('employer.jobs.index', ['jobs' => $jobs, 'statusFilter' => $status]);
+
+        /*
+            Counted separately, and deliberately unfiltered. The "All Jobs (n)"
+            pill was reading `$jobs->count()`, which on a paginated result is the
+            size of *this page* — an employer with 30 vacancies was told they had
+            20. It is also what decides between the two empty states: a company
+            that has never posted anything needs the invitation, while one whose
+            Drafts filter happens to be empty needs telling that only this view
+            is empty.
+        */
+        $totalJobs = $this->company()->jobs()->count();
+
+        return view('employer.jobs.index', [
+            'jobs' => $jobs,
+            'statusFilter' => $status,
+            'totalJobs' => $totalJobs,
+        ]);
     }
 
-    public function create()
+    /**
+     * @param  Request  $request  `?from=` carries a finished hiring conversation
+     */
+    public function create(Request $request)
     {
-        return view('employer.jobs.form', ['job' => null, 'categories' => JobCategory::where('is_active', true)->orderBy('sort_order')->orderBy('name')->get(), 'countries' => Country::where('is_active', true)->orderBy('sort_order')->orderBy('name')->get()]);
+        return view('employer.jobs.form', [
+            'job' => null,
+            // A draft built from what the employer already told the agent, so
+            // "post it as a vacancy" is not a second interview. Passed
+            // separately from $job on purpose: a non-null $job flips this form
+            // into edit mode and points it at the update route.
+            'prefill' => $this->prefill($request),
+            'categories' => JobCategory::where('is_active', true)->orderBy('sort_order')->orderBy('name')->get(),
+            'countries' => Country::where('is_active', true)->orderBy('sort_order')->orderBy('name')->get(),
+        ]);
+    }
+
+    /**
+     * The hiring conversation, as an unsaved vacancy.
+     *
+     * Only the employer's own conversations, and only finished ones — a draft
+     * built from three answers would put a half-empty form in front of someone
+     * who would reasonably assume we had filled it in.
+     */
+    private function prefill(Request $request): ?Job
+    {
+        $from = $request->integer('from');
+
+        if ($from < 1) {
+            return null;
+        }
+
+        $conversation = AgentConversation::where('user_id', auth()->id())
+            ->where('intent', 'hire')
+            ->where('status', 'done')
+            ->find($from);
+
+        if ($conversation === null) {
+            return null;
+        }
+
+        $script = app(HiringScript::class);
+        $answers = $conversation->answers ?? [];
+
+        $draft = $script->spec($answers, $this->company());
+        $draft->vacancies = $script->headcount($answers) ?? 1;
+        $draft->job_category_id = $this->categoryFor($answers['category'] ?? null)?->id;
+
+        return $draft;
+    }
+
+    /**
+     * Match the app's category to one of ours.
+     *
+     * The two vocabularies overlap but are not identical — the app says
+     * "Healthcare & Nursing" where our job board says "Healthcare" — so an
+     * exact match is tried first and a contains match second. No match means
+     * the employer picks one themselves, which is better than guessing at a
+     * category their vacancy will be filed under.
+     */
+    private function categoryFor(?string $name): ?JobCategory
+    {
+        if (blank($name)) {
+            return null;
+        }
+
+        $categories = JobCategory::where('is_active', true)->get();
+
+        return $categories->firstWhere(fn (JobCategory $c) => strcasecmp($c->name, $name) === 0)
+            ?? $categories->first(function (JobCategory $c) use ($name): bool {
+                $ours = strtolower($c->name);
+                $theirs = strtolower($name);
+
+                return str_contains($theirs, $ours) || str_contains($ours, $theirs);
+            });
     }
 
     public function store(Request $request)
@@ -67,14 +157,30 @@ class JobController extends Controller
         $data['status'] = $request->boolean('publish_now') ? 'published' : 'draft';
         $data['published_at'] = $data['status'] === 'published' ? now() : null;
         $this->storeImage($request, $data);
+
+        // Charged against the company's `job_post` balance — but only refused
+        // once an admin turns enforcement on. Until prices are signed off this
+        // records the usage and always succeeds, which is what "billing starts
+        // at zero" means in practice. Checked before the vacancy is created so a
+        // refusal never leaves a job behind that was not paid for.
+        $entitlements = app(\App\Services\SubscriptionEntitlementService::class);
+        $company = $this->company();
+
+        if (! $entitlements->consume($company, 'job_post', 1, null, $data['title'] ?? null)) {
+            return back()
+                ->withInput()
+                ->with('info', 'You have used all your vacancy credits for this month. Add more from Subscription to post again.');
+        }
+
         Job::create($data);
+
         return redirect()->route('employer.jobs.index')->with('success', 'Job saved.');
     }
 
     public function edit(Job $job)
     {
         abort_unless($job->company_id === $this->company()->id || auth()->user()?->hasRole('super-admin'), 404);
-        return view('employer.jobs.form', ['job' => $job, 'categories' => JobCategory::where('is_active', true)->orderBy('sort_order')->orderBy('name')->get(), 'countries' => Country::where('is_active', true)->orderBy('sort_order')->orderBy('name')->get()]);
+        return view('employer.jobs.form', ['job' => $job, 'prefill' => null, 'categories' => JobCategory::where('is_active', true)->orderBy('sort_order')->orderBy('name')->get(), 'countries' => Country::where('is_active', true)->orderBy('sort_order')->orderBy('name')->get()]);
     }
 
     public function update(Request $request, Job $job)

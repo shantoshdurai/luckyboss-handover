@@ -33,7 +33,7 @@
                     Create Free Profile &rarr;
                 </a>
                 <a href="{{ route('jobs.index') }}" class="btn btn-outline btn-lg px-8 py-3.5 border-white/30 text-white hover:bg-white/15 font-bold text-sm font-sans">
-                    Explore 5,000+ Jobs
+                    Explore all jobs
                 </a>
             </div>
 

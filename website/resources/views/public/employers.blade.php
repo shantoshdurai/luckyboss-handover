@@ -26,35 +26,9 @@
         </div>
     </section>
 
-    {{-- Value Props Grid --}}
-    <section class="py-16 bg-white border-b border-border">
-        <div class="container mx-auto px-6">
-            <div class="grid md:grid-cols-3 gap-8">
-                <div class="p-8 rounded-2xl bg-surface-sunken border border-border">
-                    <div class="w-12 h-12 rounded-xl bg-secondary-50 text-secondary-600 flex items-center justify-center mb-6 font-bold text-xl">
-                        01
-                    </div>
-                    <h3 class="text-xl font-heading font-bold text-navy mb-3">AI Candidate Scoring</h3>
-                    <p class="text-text-secondary leading-relaxed">Automatically analyze applicants against job requirements with instant match percentages and skill gap highlights.</p>
-                </div>
-                <div class="p-8 rounded-2xl bg-surface-sunken border border-border">
-                    <div class="w-12 h-12 rounded-xl bg-blue-50 text-accent flex items-center justify-center mb-6 font-bold text-xl">
-                        02
-                    </div>
-                    <h3 class="text-xl font-heading font-bold text-navy mb-3">Seamless Interviews</h3>
-                    <p class="text-text-secondary leading-relaxed">Schedule video and in-person interviews directly from your portal with automated email and calendar notifications.</p>
-                </div>
-                <div class="p-8 rounded-2xl bg-surface-sunken border border-border">
-                    <div class="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center mb-6 font-bold text-xl">
-                        03
-                    </div>
-                    <h3 class="text-xl font-heading font-bold text-navy mb-3">Compliance & Offers</h3>
-                    <p class="text-text-secondary leading-relaxed">Issue structured job offers, track document submissions, and ensure cross-border recruitment compliance.</p>
-                </div>
-            </div>
-        </div>
-    </section>
-
+    {{-- Pricing sits directly under the banner, at sir's request: an
+         employer arriving here is deciding whether to buy, and the plans
+         were three screens down behind the feature cards. --}}
     {{-- Subscription Packages Section --}}
     @if(isset($packages) && $packages->count() > 0)
     <section class="py-20 bg-surface">
@@ -104,4 +78,33 @@
         </div>
     </section>
     @endif
+
+    {{-- Value Props Grid --}}
+    <section class="py-16 bg-white border-b border-border">
+        <div class="container mx-auto px-6">
+            <div class="grid md:grid-cols-3 gap-8">
+                <div class="p-8 rounded-2xl bg-surface-sunken border border-border">
+                    <div class="w-12 h-12 rounded-xl bg-secondary-50 text-secondary-600 flex items-center justify-center mb-6 font-bold text-xl">
+                        01
+                    </div>
+                    <h3 class="text-xl font-heading font-bold text-navy mb-3">AI Candidate Scoring</h3>
+                    <p class="text-text-secondary leading-relaxed">Automatically analyze applicants against job requirements with instant match percentages and skill gap highlights.</p>
+                </div>
+                <div class="p-8 rounded-2xl bg-surface-sunken border border-border">
+                    <div class="w-12 h-12 rounded-xl bg-blue-50 text-accent flex items-center justify-center mb-6 font-bold text-xl">
+                        02
+                    </div>
+                    <h3 class="text-xl font-heading font-bold text-navy mb-3">Seamless Interviews</h3>
+                    <p class="text-text-secondary leading-relaxed">Schedule video and in-person interviews directly from your portal with automated email and calendar notifications.</p>
+                </div>
+                <div class="p-8 rounded-2xl bg-surface-sunken border border-border">
+                    <div class="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center mb-6 font-bold text-xl">
+                        03
+                    </div>
+                    <h3 class="text-xl font-heading font-bold text-navy mb-3">Compliance & Offers</h3>
+                    <p class="text-text-secondary leading-relaxed">Issue structured job offers, track document submissions, and ensure cross-border recruitment compliance.</p>
+                </div>
+            </div>
+        </div>
+    </section>
 </x-layouts.app>

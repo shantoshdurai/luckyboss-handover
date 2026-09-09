@@ -21,3 +21,9 @@ Schedule::call(function (): void {
         $alert->touch();
     });
 })->hourly();
+
+// Auto-apply runs overnight, which is the whole promise of the feature: the
+// candidate wakes to applications already sent. It is a no-op unless the admin
+// switch in Site Settings -> Job Matching is on AND the candidate opted in, so
+// scheduling it here is safe while the feature is still off.
+Schedule::command('auto-apply:run')->dailyAt('02:00')->withoutOverlapping();

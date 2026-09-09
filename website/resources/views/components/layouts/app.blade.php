@@ -7,6 +7,11 @@
      having none. --}}
 @props([
     'bare' => false,
+    // Separate from `bare`: a page can want the header and none of the footer.
+    // The Lucky AI conversation is the case — TickBig's chat has no footer at
+    // all, it just extends as the conversation grows, and a marketing footer
+    // under a half-finished conversation reads as the end of the page.
+    'footer' => true,
     'title' => null,
     'description' => null,
     'image' => null,
@@ -42,11 +47,55 @@
     {{-- Google Fonts: Anthropic/Claude Style Editorial Serif (Newsreader) + Plus Jakarta Sans --}}
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400..800;1,6..72,400..800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Newsreader:ital,opsz,wght@0,6..72,400..800;1,6..72,400..800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 
     <style>
+        /*
+            Palette and type, set as token overrides rather than by rebuilding
+            the stylesheet. This project ships a prebuilt CSS bundle with no Node
+            step, so the tokens the bundle already defines are the only sane
+            place to change the look — every page picks these up at once, and
+            nothing has to be recompiled.
+
+            Two changes, both asked for after looking at how tickbig.com reads:
+
+            1. Inter for UI text. Their pages use it, and it is the reason they
+               look cleaner at small sizes than we did. It is also free and
+               open source — ChatGPT's own typefaces (Söhne, OpenAI Sans) are
+               licensed and we cannot ship them. Newsreader stays for display
+               headings; it is the one thing in our identity they do not have.
+
+            2. The greys move off slate and onto the navy in our logo. The page
+               ground is a soft blue-white rather than a neutral grey, and cards
+               stay pure white on top of it, which is what makes white surfaces
+               read as deliberate instead of as an unstyled background.
+
+            Muted text was also darkened from #94a3b8: against a light ground it
+            sat near 2.6:1, which is unreadable outdoors — and our candidates are
+            on site, in sunlight, on cheap phones.
+        */
+        :root {
+            --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, sans-serif;
+            --font-heading: "Inter", ui-sans-serif, system-ui, sans-serif;
+
+            --color-surface: #F2F6FC;
+            --color-surface-raised: #FFFFFF;
+            --color-surface-sunken: #E8EFF9;
+
+            --color-border: #DCE6F3;
+
+            --color-text-primary: #0B1E38;
+            --color-text-secondary: #46586F;
+            --color-text-muted: #6E829C;
+        }
+
+        /* Alpine hides these once it boots; without the rule every x-show="false"
+           panel is painted first and then yanked away, so a multi-step form
+           flashes all of its steps at once on load. */
+        [x-cloak] { display: none !important; }
+
         @keyframes pageEntrance {
             0% { opacity: 0; transform: translateY(6px); }
             100% { opacity: 1; transform: translateY(0); }
@@ -54,6 +103,49 @@
         .page-transition-wrap {
             animation: pageEntrance 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
         }
+        /* Centred loader shown while a page is being fetched. Plain CSS: the
+           Tailwind bundle is prebuilt with no Node step, so a utility invented
+           here would not exist at runtime. */
+        #lb-loader {
+            position: fixed;
+            inset: 0;
+            z-index: 90;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            background: rgba(242, 246, 252, 0.72);
+            backdrop-filter: blur(2px);
+        }
+        #lb-loader.is-on { display: flex; }
+        #lb-loader .lb-spin {
+            width: 38px;
+            height: 38px;
+            border-radius: 9999px;
+            border: 3px solid rgba(3, 31, 73, 0.12);
+            border-top-color: #18A66A;
+            animation: lb-spin 0.7s linear infinite;
+        }
+        @keyframes lb-spin { to { transform: rotate(360deg); } }
+
+        /* The incoming page slides in from the right rather than snapping. */
+        @keyframes lb-page-in {
+            from { opacity: 0; transform: translateX(14px); }
+            to   { opacity: 1; transform: translateX(0); }
+        }
+        main.lb-swapped { animation: lb-page-in 0.22s cubic-bezier(0.16, 1, 0.3, 1); }
+
+        /* Deliberately NOT `html { scroll-behavior: smooth }`. Setting it
+           globally swallows programmatic scrolling: with the rule in place,
+           window.scrollTo does nothing at all — even with behavior:'auto' —
+           so anchor navigation silently landed at the top of the page. Smooth
+           scrolling is done explicitly in JS below instead, where it can be
+           measured and cannot break anything else. */
+
+        @media (prefers-reduced-motion: reduce) {
+            #lb-loader .lb-spin { animation-duration: 2s; }
+            main.lb-swapped { animation: none; }
+        }
+
         #nav-loading-bar {
             position: fixed;
             top: 0;
@@ -72,6 +164,10 @@
 <body class="min-h-screen flex flex-col bg-surface antialiased font-sans">
     {{-- Top Loading Indicator Bar --}}
     <div id="nav-loading-bar"></div>
+
+    {{-- Centred loader. Sits under the header's z-index on purpose: the top bar
+         stays visible and interactive while the page underneath changes. --}}
+    <div id="lb-loader" aria-hidden="true"><span class="lb-spin"></span></div>
 
     {{-- Flash Messages --}}
     @if(session('application_submitted'))
@@ -128,9 +224,9 @@
     </main>
 
     {{-- Footer --}}
-    @unless($bare)
+    @if(! $bare && $footer)
         <x-footer />
-    @endunless
+    @endif
 
     {{-- Global AI Recruitment Copilot Drawer --}}
     @unless($bare)
@@ -181,6 +277,450 @@
                 }
             });
         });
+    </script>
+
+    {{-- Soft navigation. See the comment block in the deploy note: the header
+         is never re-rendered, so the logo cannot flash and the account menu
+         keeps its state. Anything uncertain falls back to a real navigation. --}}
+    <script>
+    (function () {
+        var loader = document.getElementById('lb-loader');
+        var busy = false;
+
+        // Without these the page still works exactly as before — this whole
+        // file is an enhancement, never a requirement.
+        if (!window.fetch || !window.history.pushState || !window.DOMParser) return;
+
+        // The top progress line belongs to an older script that only ever
+        // finished it on `pageshow` — an event a soft navigation never fires.
+        // So every soft click left it parked at 70% for good: the "loading line
+        // stuck at three quarters" sir reported. Soft nav now drives it too.
+        var progress = document.getElementById('nav-loading-bar');
+
+        function show() {
+            if (loader) loader.classList.add('is-on');
+            if (progress) {
+                progress.style.opacity = '1';
+                progress.style.width = '70%';
+            }
+        }
+
+        function hide() {
+            if (loader) loader.classList.remove('is-on');
+            if (!progress) return;
+
+            progress.style.width = '100%';
+            window.setTimeout(function () {
+                progress.style.opacity = '0';
+                progress.style.width = '0%';
+            }, 200);
+        }
+
+        function hardNav(url) { window.location.href = url; }
+
+        /**
+         * Glide to an anchor, 80px clear of the sticky header.
+         *
+         * Animated by hand rather than with behavior:'smooth'. Native smooth
+         * scrolling is unreliable here — it is skipped outright in some
+         * contexts — and a section that silently does not scroll is exactly the
+         * bug this replaced.
+         */
+        /**
+         * The prebuilt CSS bundle sets `scroll-behavior: smooth` on <html>, and
+         * that bundle cannot be rebuilt (no Node step). While it is in force,
+         * window.scrollTo is simply ignored — every programmatic scroll on this
+         * site silently does nothing. An inline style on the element is the only
+         * thing that outranks it, so every scroll here is wrapped in one.
+         */
+        function instantly(fn) {
+            var de = document.documentElement;
+            var prev = de.style.scrollBehavior;
+            de.style.scrollBehavior = 'auto';
+            try { fn(); } finally {
+                window.setTimeout(function () { de.style.scrollBehavior = prev; }, 0);
+            }
+        }
+
+        function toTop() { instantly(function () { window.scrollTo(0, 0); }); }
+
+        /**
+         * Scroll to a fragment once the page has stopped moving.
+         *
+         * Retries for up to a second: after a swap the entry animation is still
+         * running, re-run scripts are still mutating the DOM and images are
+         * still loading, so the anchor's position keeps changing. It stops as
+         * soon as two consecutive measurements agree.
+         */
+        function honourHash(hash) {
+            var tries = 0;
+            var lastTop = null;
+
+            function attempt() {
+                var el = hash ? document.querySelector(hash) : null;
+                if (!el) { if (tries++ < 20) window.setTimeout(attempt, 50); else toTop(); return; }
+
+                var top = Math.round(el.getBoundingClientRect().top + window.scrollY);
+
+                if (lastTop !== null && Math.abs(top - lastTop) < 2) { scrollToAnchor(el); return; }
+
+                lastTop = top;
+                if (tries++ < 20) window.setTimeout(attempt, 50);
+                else scrollToAnchor(el);
+            }
+
+            attempt();
+        }
+
+        // A fragment in the address bar on a cold load gets the same treatment:
+        // the browser's own jump happens before images have sized the page, so
+        // it habitually lands short.
+        if (window.location.hash) {
+            window.addEventListener('load', function () { honourHash(window.location.hash); });
+        }
+
+        function scrollToAnchor(el) {
+            var target = el.getBoundingClientRect().top + window.scrollY - 80;
+            if (target < 0) target = 0;
+
+            var start = window.scrollY;
+            var distance = target - start;
+            if (Math.abs(distance) < 2) return;
+
+            var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+            if (reduce) { instantly(function () { window.scrollTo(0, target); }); return; }
+
+            // Animated by hand, one frame at a time, with the CSS smoothing held
+            // off for the whole run rather than per frame.
+            var de = document.documentElement;
+            var prev = de.style.scrollBehavior;
+            de.style.scrollBehavior = 'auto';
+
+            // Stepped on a timer, not requestAnimationFrame. rAF is paused
+            // outright in a background or unfocused tab, so an rAF-driven scroll
+            // does not run late — it never runs at all, and the page silently
+            // stays where it was. A timer is marginally less smooth and always
+            // finishes.
+            var duration = 420;
+            var began = (window.performance && performance.now) ? performance.now() : Date.now();
+
+            function step() {
+                var now = (window.performance && performance.now) ? performance.now() : Date.now();
+                var t = Math.min((now - began) / duration, 1);
+                var eased = t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+                window.scrollTo(0, start + distance * eased);
+                if (t < 1) { window.setTimeout(step, 16); }
+                else {
+                    de.style.scrollBehavior = prev;
+                    // Tell the scroll-spy we moved. A programmatic scroll does
+                    // not always deliver a scroll event, which left the active
+                    // pill sitting on whatever it was before the jump.
+                    window.dispatchEvent(new Event('scroll'));
+                }
+            }
+
+            step();
+        }
+
+        function swap(el, next) {
+            if (!el || !next) return;
+            el.replaceWith(next);
+        }
+
+        /**
+         * Re-run any <script> the incoming page carried. Nodes inserted through
+         * innerHTML never execute, so without this the agent home's rolling
+         * line would silently stop rolling after one soft navigation.
+         */
+        function runScripts(root) {
+            root.querySelectorAll('script').forEach(function (old) {
+                var s = document.createElement('script');
+                for (var i = 0; i < old.attributes.length; i++) {
+                    s.setAttribute(old.attributes[i].name, old.attributes[i].value);
+                }
+                s.textContent = old.textContent;
+                old.replaceWith(s);
+            });
+        }
+
+        function navigate(url, push, init) {
+            if (busy) return;
+            busy = true;
+            show();
+
+            // Kept separately: fetch() never reports a fragment back, because a
+            // fragment is never sent to the server.
+            var wantedHash = '';
+            try { wantedHash = new URL(url, location.href).hash; } catch (err) {}
+
+            fetch(url, init || { credentials: 'same-origin', headers: { 'X-Soft-Nav': '1' } })
+                .then(function (res) {
+                    if (!res.ok || res.redirected && new URL(res.url).origin !== location.origin) throw new Error('bad');
+                    return res.text().then(function (html) { return { html: html, url: res.url }; });
+                })
+                .then(function (payload) {
+                    var doc = new DOMParser().parseFromString(payload.html, 'text/html');
+                    var nextMain = doc.querySelector('main');
+                    var currentMain = document.querySelector('main');
+
+                    // A response we cannot recognise as one of our pages (a
+                    // redirect to sign-in, an error page) gets a real load.
+                    if (!nextMain || !currentMain) throw new Error('no main');
+
+                    // Alpine has to be able to wake the new DOM up. If it is not
+                    // there, a soft swap would leave every dropdown dead.
+                    if (!window.Alpine || typeof window.Alpine.initTree !== 'function') throw new Error('no alpine');
+
+                    document.title = doc.title || document.title;
+
+                    // The header is left mounted wherever both pages have one —
+                    // that is the whole point, it must not flash. But `bare`
+                    // pages (sign in, register) have none, and leaving the old
+                    // one behind put a second header above their own card.
+                    // `body > header` on purpose: the site header is a direct
+                    // child of body, while a bare page's own little header sits
+                    // inside <main>. A loose 'header' selector matches that one
+                    // too and would think the site header was still wanted.
+                    var nextHeader = doc.querySelector('body > header');
+                    var currentHeader = document.querySelector('body > header');
+
+                    if (!nextHeader && currentHeader) {
+                        currentHeader.remove();
+                        currentHeader = null;
+                    } else if (nextHeader && !currentHeader) {
+                        document.body.insertBefore(nextHeader, document.body.firstChild);
+                        if (window.Alpine && window.Alpine.initTree) window.Alpine.initTree(nextHeader);
+                    }
+
+                    // Both have one: keep it, and change only the pill nav.
+                    var nextNav = doc.querySelector('body > header nav');
+                    var currentNav = document.querySelector('body > header nav');
+                    if (nextNav && currentNav) swap(currentNav, nextNav);
+
+                    nextMain.classList.add('lb-swapped');
+                    swap(currentMain, nextMain);
+
+                    // The footer is present on most pages and absent on the
+                    // conversation, so it is added or removed to match.
+                    var nextFooter = doc.querySelector('footer');
+                    var currentFooter = document.querySelector('footer');
+                    if (nextFooter && currentFooter) { swap(currentFooter, nextFooter); }
+                    else if (nextFooter && !currentFooter) { document.body.appendChild(nextFooter); }
+                    else if (!nextFooter && currentFooter) { currentFooter.remove(); }
+
+                    runScripts(document.querySelector('main'));
+                    if (nextFooter) runScripts(document.querySelector('footer') || document.body);
+
+                    window.Alpine.initTree(document.querySelector('main'));
+                    if (currentNav !== nextNav && document.querySelector('body > header nav')) {
+                        window.Alpine.initTree(document.querySelector('body > header nav'));
+                    }
+
+                    if (push) window.history.pushState({ softnav: true }, '', payload.url + wantedHash);
+
+                    // A fragment means "take me to that part of the page", so a
+                    // jump to the top would be the one thing the click did not ask for.
+                    // Handled by honourHash() rather than inline. Doing it in
+                    // this chain proved unreliable — the swap, the entry
+                    // animation and the re-run scripts all move the layout under
+                    // it, and a single measurement taken here lands on the wrong
+                    // number or is undone. The watcher retries until the page
+                    // settles instead.
+                    if (wantedHash) honourHash(wantedHash);
+                    else toTop();
+
+                    busy = false;
+                    hide();
+                })
+                .catch(function () { hardNav(url); });
+        }
+
+        document.addEventListener('click', function (e) {
+            if (e.defaultPrevented || e.button !== 0) return;
+            if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+
+            var a = e.target.closest ? e.target.closest('a[href]') : null;
+            if (!a) return;
+
+            if (a.target && a.target !== '_self') return;
+            if (a.hasAttribute('download') || a.hasAttribute('data-no-soft-nav')) return;
+
+            var href = a.getAttribute('href') || '';
+            if (!href || href.startsWith('mailto:') || href.startsWith('tel:') || href.startsWith('javascript:')) return;
+
+            // A bare "#section" link. This used to return here and leave it to
+            // the browser — which cannot scroll at all, because the prebuilt
+            // bundle's `scroll-behavior: smooth` swallows it. That was why
+            // Explore and Opportunities did nothing.
+            if (href.charAt(0) === '#') {
+                if (href === '#') return;
+                var section = document.querySelector(href);
+                if (!section) return;
+                e.preventDefault();
+                scrollToAnchor(section);
+                window.history.pushState({ softnav: true }, '', href);
+                return;
+            }
+
+            var target;
+            try { target = new URL(href, location.href); } catch (err) { return; }
+
+            if (target.origin !== location.origin) return;
+            // An anchor on the page we are already on: scroll to it ourselves.
+            // Left to the browser this is an instant jump, which is the jolt sir
+            // described when clicking Explore.
+            if (target.pathname === location.pathname && target.search === location.search && target.hash) {
+                var here = document.querySelector(target.hash);
+                if (!here) return;
+                e.preventDefault();
+                scrollToAnchor(here);
+                window.history.pushState({ softnav: true }, '', target.href);
+                return;
+            }
+
+            e.preventDefault();
+            navigate(target.href, true);
+        });
+
+        document.addEventListener('submit', function (e) {
+            if (e.defaultPrevented) return;
+
+            var form = e.target;
+            if (!(form instanceof HTMLFormElement)) return;
+            if (form.hasAttribute('data-no-soft-nav')) return;
+            if (form.target && form.target !== '_self') return;
+
+            var method = (form.getAttribute('method') || 'get').toLowerCase();
+            var action = form.getAttribute('action') || location.href;
+
+            var url;
+            try { url = new URL(action, location.href); } catch (err) { return; }
+            if (url.origin !== location.origin) return;
+
+            // GET forms are just a navigation with a query string.
+            if (method !== 'post') {
+                e.preventDefault();
+                var params = new URLSearchParams(new FormData(form));
+                url.search = params.toString();
+                navigate(url.href, true);
+                return;
+            }
+
+            e.preventDefault();
+
+            // FormData carries the CSRF token and any _method spoof, and handles
+            // file inputs, so the resume upload goes through this path too.
+            //
+            // The submitter matters: `new FormData(form)` does NOT include the
+            // name/value of the button that was pressed. Every answer chip in
+            // the Lucky AI conversation is a <button name="answer" value="...">,
+            // so without this the chat posts an empty answer and the question
+            // just re-renders. It was masked at first because the opening
+            // confirm falls back to "Yes" when no answer arrives.
+            var body;
+            try {
+                body = new FormData(form, e.submitter || null);
+            } catch (err) {
+                body = new FormData(form);
+            }
+
+            // Older engines ignore the second argument, so add it by hand when
+            // it did not come through.
+            if (e.submitter && e.submitter.name && !body.has(e.submitter.name)) {
+                body.append(e.submitter.name, e.submitter.value);
+            }
+
+            navigate(url.href, true, {
+                method: 'POST',
+                body: body,
+                credentials: 'same-origin',
+                headers: { 'X-Soft-Nav': '1' }
+            });
+        });
+
+        window.addEventListener('popstate', function (e) {
+            if (e.state && e.state.softnav) navigate(location.href, false);
+        });
+
+        // Mark the first page so Back to it is handled the same way.
+        window.history.replaceState({ softnav: true }, '', location.href);
+    })();
+    </script>
+
+    {{-- Scroll-spy for the pill nav. Explore and Opportunities scroll rather
+         than navigate, so without this the server's "Home" stays lit however far
+         down the page you are. --}}
+    <script>
+    (function () {
+        // These two strings must match what the header renders, or the pill the
+        // server lit and the pill this lights will look different.
+        var ON  = ['bg-navy', 'text-white', 'shadow-xs', 'font-bold'];
+        var OFF = ['font-semibold', 'text-slate-700', 'hover:text-navy', 'hover:bg-slate-200/70'];
+
+        function paint(links, activeHref) {
+            links.forEach(function (a) {
+                var isOn = a.getAttribute('href') === activeHref;
+                ON.forEach(function (c) { a.classList.toggle(c, isOn); });
+                OFF.forEach(function (c) { a.classList.toggle(c, !isOn); });
+            });
+        }
+
+        var ticking = false;
+
+        function update() {
+            ticking = false;
+
+            var browse = document.getElementById('browse');
+            var opportunities = document.getElementById('opportunities');
+            if (!browse && !opportunities) return;   // not a page with these sections
+
+            // Re-queried every time: soft navigation replaces the <nav> element.
+            var nav = document.querySelector('header nav');
+            if (!nav) return;
+
+            // The Home link renders as an absolute URL with no trailing slash
+            // ("http://host"), so it has to be resolved rather than string-matched.
+            var links = Array.prototype.filter.call(nav.querySelectorAll('a[href]'), function (a) {
+                var h = a.getAttribute('href') || '';
+                if (h === '#browse' || h === '#opportunities') return true;
+                try {
+                    var u = new URL(h, location.href);
+                    return u.origin === location.origin && (u.pathname === '/' || u.pathname === '') && !u.hash;
+                } catch (e) { return false; }
+            });
+            if (links.length < 2) return;   // the signed-in nav has no anchors — leave it alone
+
+            // A third of the way down the viewport: a section counts as current
+            // once it is properly on screen, not the instant its top edge appears.
+            var line = window.scrollY + window.innerHeight / 3;
+            var active = links[0].getAttribute('href');
+
+            // Document offsets, not offsetTop: both markers sit inside <main>,
+            // which is their offsetParent, so offsetTop is short by the header's
+            // height and every section would switch that much too early.
+            function docTop(el) { return el.getBoundingClientRect().top + window.scrollY; }
+
+            if (browse && line >= docTop(browse)) active = '#browse';
+            if (opportunities && line >= docTop(opportunities)) active = '#opportunities';
+
+            paint(links, active);
+        }
+
+        function onScroll() {
+            if (ticking) return;
+            ticking = true;
+            // setTimeout, not requestAnimationFrame: rAF is paused in an
+            // unfocused tab, which would leave the active pill frozen wherever
+            // it was when focus was lost.
+            window.setTimeout(update, 60);
+        }
+
+        window.addEventListener('scroll', onScroll, { passive: true });
+        window.addEventListener('resize', onScroll, { passive: true });
+        window.addEventListener('popstate', onScroll);
+        document.addEventListener('DOMContentLoaded', update);
+        update();
+    })();
     </script>
 
     @stack('scripts')

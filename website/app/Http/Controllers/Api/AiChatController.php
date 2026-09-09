@@ -59,6 +59,19 @@ STRICT RESPONSE GUIDELINES (Goldilocks Rule - Not too short, not too long):
                         ]
                     ]);
 
+                // Spec §67: every AI call records its tokens and estimated cost,
+                // success or not. The tokens were spent either way, and a log
+                // that counts only successes understates what AI costs us —
+                // which is the number the pricing decision depends on.
+                app(\App\Services\AiUsageRecorder::class)->record(
+                    feature: 'ai_chat',
+                    user: $request->user(),
+                    model: $geminiModel,
+                    promptTokens: (int) $response->json('usageMetadata.promptTokenCount', 0),
+                    completionTokens: (int) $response->json('usageMetadata.candidatesTokenCount', 0),
+                    status: $response->successful() ? 'success' : 'failed',
+                );
+
                 if ($response->successful()) {
                     $replyText = $response->json('candidates.0.content.parts.0.text');
                     if (!empty(trim($replyText))) {
@@ -88,7 +101,7 @@ STRICT RESPONSE GUIDELINES (Goldilocks Rule - Not too short, not too long):
     private function runLocalChatScript(string $message): array
     {
         $q = strtolower($message);
-        $reply = "Hello! I am Lucky AI, your recruitment copilot on Luckyboss.\n\nHere is how I can assist you today:\n• 🔍 **Find Verified Jobs:** Browse active openings across Singapore, Malaysia, and India.\n• 📊 **Salary Insights:** Check competitive compensation benchmarks.\n• 📄 **Resume Match Scoring:** Get instant feedback on your profile fit.\n• 🏢 **Employer Hiring:** Post vacancies and access 50,000+ candidates.";
+        $reply = "Hello! I am Lucky AI, your recruitment copilot on Luckyboss.\n\nHere is how I can assist you today:\n• 🔍 **Find Verified Jobs:** Browse active openings across Singapore, Malaysia, and India.\n• 📊 **Salary Insights:** See the published pay ranges on our current openings.\n• 📄 **Resume Match Scoring:** Get instant feedback on your profile fit.\n• 🏢 **Employer Hiring:** Post vacancies and reach our verified candidates.";
         $actions = [
             ['label' => 'Explore Jobs', 'url' => route('jobs.index')],
             ['label' => 'Post Vacancy', 'url' => route('register.employer')]
@@ -108,18 +121,19 @@ STRICT RESPONSE GUIDELINES (Goldilocks Rule - Not too short, not too long):
                 ['label' => 'Employer Portal', 'url' => route('register.employer')]
             ];
         } elseif (str_contains($q, 'warehouse') || str_contains($q, 'logistics') || str_contains($q, 'supervisor')) {
-            $matchingJobs = Job::where('status', 'published')
-                ->where(fn($query) => $query->where('title', 'like', '%warehouse%')->orWhere('title', 'like', '%logistics%'))
-                ->take(3)
-                ->get();
-
-            $reply = "We have active openings in **Logistics & Warehouse Operations** in Singapore (SGD 2,800 - 4,500/month):\n\n• 📦 **Warehouse Supervisor** — Jurong East / Kallang\n• 🚛 **Logistics Operations Executive** — Tuas\n• 📋 **Inventory Controller** — Woodlands";
+            $reply = $this->describeOpenings(
+                ['warehouse', 'logistics'],
+                'Logistics & Warehouse Operations'
+            );
             $actions = [
                 ['label' => 'View Warehouse Jobs', 'url' => route('jobs.index', ['keyword' => 'Warehouse'])],
                 ['label' => 'Browse All Roles', 'url' => route('jobs.index')]
             ];
         } elseif (str_contains($q, 'construction') || str_contains($q, 'engineer') || str_contains($q, 'site')) {
-            $reply = "We have verified openings for **Site Supervisors** and **Civil Engineers** in Singapore and Malaysia (SGD 4,200 - 5,800/month) with immediate employer shortlisting.";
+            $reply = $this->describeOpenings(
+                ['construction', 'engineer', 'site'],
+                'Construction & Engineering'
+            );
             $actions = [['label' => 'Explore Construction Roles', 'url' => route('jobs.index', ['keyword' => 'Construction'])]];
         } elseif (str_contains($q, 'resume') || str_contains($q, 'score') || str_contains($q, 'match')) {
             $reply = "To achieve a **90%+ match score** on Luckyboss:\n\n• List 5+ specific technical and operational skills.\n• Detail measurable outcomes from previous employment.\n• Keep your location and salary expectations accurate.\n• Upload a clean PDF version of your resume.";
@@ -127,8 +141,8 @@ STRICT RESPONSE GUIDELINES (Goldilocks Rule - Not too short, not too long):
                 ['label' => 'Update Profile & Resume', 'url' => route('seeker.profile.edit')]
             ];
         } elseif (str_contains($q, 'salary') || str_contains($q, 'paying') || str_contains($q, 'pay')) {
-            $reply = "Top published roles on Luckyboss range from **SGD 3,500 to SGD 6,500/month** across Engineering, Technology, Logistics, and Healthcare sectors.";
-            $actions = [['label' => 'Browse High-Paying Jobs', 'url' => route('jobs.index')]];
+            $reply = $this->describePay();
+            $actions = [['label' => 'Browse All Jobs', 'url' => route('jobs.index')]];
         }
 
         return [
@@ -136,6 +150,87 @@ STRICT RESPONSE GUIDELINES (Goldilocks Rule - Not too short, not too long):
             'actions' => $actions,
             'engine' => 'local_heuristic_nlp_script',
         ];
+    }
+
+    /**
+     * Describes what is actually open in a sector, from the jobs table.
+     *
+     * This replaces three hardcoded vacancy lists. The worst of them queried
+     * the real jobs into `$matchingJobs` and then ignored the result entirely,
+     * printing invented roles and locations under the words "We have active
+     * openings" — a candidate asking about warehouse work was told about
+     * vacancies that did not exist, with an invented pay band attached.
+     *
+     * When nothing matches, this says so. An empty answer is a true one, and
+     * the alternative is what was here before.
+     */
+    private function describeOpenings(array $keywords, string $sectorLabel): string
+    {
+        $jobs = Job::where('status', 'published')
+            ->where(function ($query) use ($keywords) {
+                foreach ($keywords as $word) {
+                    $query->orWhere('title', 'like', '%' . $word . '%');
+                }
+            })
+            ->take(4)
+            ->get();
+
+        if ($jobs->isEmpty()) {
+            return "I do not have any **{$sectorLabel}** vacancies open right now.\n\nNew roles are published regularly — browse everything currently live, or tell me another kind of work and I will check.";
+        }
+
+        $lines = $jobs->map(function (Job $job) {
+            $line = '• **' . $job->title . '**';
+
+            if (! empty($job->location)) {
+                $line .= ' — ' . $job->location;
+            }
+
+            if ($job->salary_min && $job->salary_max) {
+                $line .= ' (' . $job->currency_code . ' '
+                    . number_format((float) $job->salary_min) . ' - '
+                    . number_format((float) $job->salary_max) . ')';
+            }
+
+            return $line;
+        })->implode("\n");
+
+        $count = $jobs->count();
+        $heading = $count === 1
+            ? "There is 1 **{$sectorLabel}** role open right now:"
+            : "Here are {$count} **{$sectorLabel}** roles open right now:";
+
+        return $heading . "\n\n" . $lines;
+    }
+
+    /**
+     * Reports the real published pay range, per currency.
+     *
+     * Previously asserted a flat "SGD 3,500 to SGD 6,500/month" that was not
+     * derived from anything.
+     */
+    private function describePay(): string
+    {
+        $bands = Job::where('status', 'published')
+            ->whereNotNull('salary_min')
+            ->whereNotNull('salary_max')
+            ->selectRaw('currency_code, MIN(salary_min) AS low, MAX(salary_max) AS high, COUNT(*) AS total')
+            ->groupBy('currency_code')
+            ->orderByDesc('total')
+            ->take(3)
+            ->get();
+
+        if ($bands->isEmpty()) {
+            return "None of the currently published roles list a salary range, so I cannot quote one honestly.\n\nOpen a vacancy and the employer's stated package is shown where they have given it.";
+        }
+
+        $lines = $bands->map(fn ($band) => '• **' . $band->currency_code . ' '
+            . number_format((float) $band->low) . ' - '
+            . number_format((float) $band->high) . '**'
+        )->implode("\n");
+
+        return "Across the roles currently published with a stated salary:\n\n" . $lines
+            . "\n\nRanges are what the employers themselves published, not an estimate.";
     }
 
     /**

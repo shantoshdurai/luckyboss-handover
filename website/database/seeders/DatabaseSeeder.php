@@ -60,7 +60,13 @@ class DatabaseSeeder extends Seeder
         $grades = collect(['Standard', 'Silver', 'Gold', 'Premium', 'Corporate', 'Enterprise'])->map(fn (string $name) => CompanyGrade::firstOrCreate(['slug' => str($name)->slug()], ['name' => $name]));
 
         foreach ([
-            ['key' => 'platform_ai_enabled', 'name' => 'Platform AI', 'is_enabled' => false],
+            // On, because we ship with a working Gemini key and every AI
+            // feature below is gated behind this one. It was seeded off, which
+            // meant resume autofill had never run for anyone: ResumeIntakeService
+            // stored the CV, found the master switch down, and told the candidate
+            // to type their own details. The parser was not missing — it was
+            // switched off at the wall, with no admin control that said so.
+            ['key' => 'platform_ai_enabled', 'name' => 'Platform AI', 'is_enabled' => true],
             ['key' => 'employer_byoai_enabled', 'name' => 'Employer BYOAI', 'is_enabled' => true],
             ['key' => 'ai_matching_enabled', 'name' => 'AI Matching', 'is_enabled' => false],
             ['key' => 'external_jobs_enabled', 'name' => 'External Jobs', 'is_enabled' => false],
@@ -73,6 +79,10 @@ class DatabaseSeeder extends Seeder
             ['key' => 'ai_offer_letter_enabled', 'name' => 'AI Offer Letter Generator', 'is_enabled' => true],
             ['key' => 'ai_interview_letter_enabled', 'name' => 'AI Interview Letter Generator', 'is_enabled' => true],
             ['key' => 'ai_email_generator_enabled', 'name' => 'AI Email Generator', 'is_enabled' => true],
+            // Never seeded at all until now. ResumeIntakeService reads it with
+            // `?? false`, so a row that did not exist read as "off" and the
+            // Gemini extraction we built was unreachable on a fresh install.
+            ['key' => 'ai_resume_parser_enabled', 'name' => 'AI Resume Autofill', 'is_enabled' => true],
         ] as $flag) {
             FeatureFlag::updateOrCreate(['key' => $flag['key']], $flag);
         }
@@ -80,7 +90,27 @@ class DatabaseSeeder extends Seeder
         $company = Company::firstOrCreate(['name' => 'Luckyboss Demo Recruitment'], ['email' => 'hello@luckyboss.test', 'country_code' => 'SG', 'status' => 'verified', 'industry' => 'Recruitment', 'company_type_id' => $types->firstWhere('name', 'Recruitment Agency')->id, 'company_grade_id' => $grades->firstWhere('name', 'Premium')->id]);
         foreach ([['code'=>'SGD','name'=>'Singapore Dollar','symbol'=>'S$'],['code'=>'INR','name'=>'Indian Rupee','symbol'=>'Rs'],['code'=>'MYR','name'=>'Malaysian Ringgit','symbol'=>'RM']] as $currency) { \App\Models\Currency::updateOrCreate(['code'=>$currency['code']],$currency); }
         foreach ([['code'=>'IN','name'=>'India'],['code'=>'SG','name'=>'Singapore']] as $country) { Country::updateOrCreate(['code'=>$country['code']], $country + ['sort_order' => 1, 'is_active' => true]); }
-        $plans=[]; foreach ([['Starter',99,['job_posts'=>5,'candidate_views'=>50,'ai_matching'=>false,'ai_usage'=>0,'byoai'=>true]],['Professional',299,['job_posts'=>25,'candidate_views'=>500,'ai_matching'=>true,'ai_usage'=>200,'byoai'=>true]],['Enterprise',799,['job_posts'=>-1,'candidate_views'=>-1,'ai_matching'=>true,'ai_usage'=>-1,'external_candidates'=>true,'byoai'=>true]]] as [$name,$price,$entitlements]) { $plans[$name]=Package::updateOrCreate(['slug'=>str($name)->slug()],['name'=>$name,'description'=>"{$name} employer recruitment package",'validity_days'=>30,'entitlements'=>$entitlements,'is_active'=>true]); $plans[$name]->prices()->updateOrCreate(['currency_code'=>'SGD'],['amount'=>$price,'tax_rate'=>0]); }
+        // Three tiers across three markets, per spec §12 (AI limits), §71 (contact
+        // views) and §64 (prices). §64 anchors Professional at SGD 299 / INR 18,000
+        // / MYR 999 and explicitly rejects live currency conversion — "This is
+        // better than forcing real-time currency conversion" — so every price is a
+        // stored per-market number, and Starter/Enterprise are scaled from that
+        // anchor and rounded to figures that read naturally in each market.
+        //
+        // All of it is admin-editable. These are starting values, not a commitment.
+        //
+        // -1 means unlimited. `SubscriptionEntitlementService` converts it to the
+        // null the rest of the code means by "unlimited"; a finite total cannot
+        // represent it.
+        $plans=[];
+        foreach ([
+            ['Starter',      ['SGD'=>99,  'INR'=>5999,  'MYR'=>349],  ['job_posts'=>5,  'candidate_views'=>20,  'ai_matching'=>false, 'ai_usage'=>0,   'byoai'=>true]],
+            ['Professional', ['SGD'=>299, 'INR'=>18000, 'MYR'=>999],  ['job_posts'=>25, 'candidate_views'=>250, 'ai_matching'=>true,  'ai_usage'=>100, 'byoai'=>true]],
+            ['Enterprise',   ['SGD'=>799, 'INR'=>47999, 'MYR'=>2699], ['job_posts'=>-1, 'candidate_views'=>-1,  'ai_matching'=>true,  'ai_usage'=>-1,  'external_candidates'=>true, 'byoai'=>true]],
+        ] as [$name,$prices,$entitlements]) {
+            $plans[$name]=Package::updateOrCreate(['slug'=>str($name)->slug()],['name'=>$name,'description'=>"{$name} employer recruitment package",'validity_days'=>30,'entitlements'=>$entitlements,'is_active'=>true]);
+            foreach ($prices as $currency=>$amount) { $plans[$name]->prices()->updateOrCreate(['currency_code'=>$currency],['amount'=>$amount,'tax_rate'=>0]); }
+        }
         $subscription=Subscription::updateOrCreate(['company_id'=>$company->id,'package_id'=>$plans['Professional']->id],['status'=>'active','starts_at'=>today(),'expires_at'=>today()->addDays(90),'entitlements'=>$plans['Professional']->entitlements,'currency_code'=>'SGD','amount'=>299]);
         Payment::firstOrCreate(['reference'=>'LB-DEMO-001'],['company_id'=>$company->id,'subscription_id'=>$subscription->id,'purpose'=>'subscription','gateway'=>'manual','status'=>'paid','currency_code'=>'SGD','amount'=>299,'paid_at'=>now()]);
         $payment=Payment::where('reference','LB-DEMO-001')->first(); Invoice::firstOrCreate(['number'=>'INV-LB-0001'],['payment_id'=>$payment->id,'company_id'=>$company->id,'number'=>'INV-LB-0001','type'=>'employer','status'=>'issued','currency_code'=>'SGD','amount'=>299]);
@@ -88,25 +118,31 @@ class DatabaseSeeder extends Seeder
         $source=ExternalSource::firstOrCreate(['name'=>'Demo Recruitment Partner'],['source_type'=>'Recruitment Partner','feed_type'=>'manual','status'=>'active','contacts_visible'=>false,'import_limit'=>100]); ImportBatch::firstOrCreate(['external_source_id'=>$source->id,'data_type'=>'candidates'],['user_id'=>$admin->id,'status'=>'completed','records_received'=>10,'records_imported'=>8,'records_failed'=>2]);
         foreach ([['key'=>'platform_openai','name'=>'OpenAI GPT','provider'=>'OpenAI','is_enabled'=>false,'monthly_limit'=>10000000],['key'=>'resume_parser','name'=>'Resume Parser','provider'=>'Manual fallback','is_enabled'=>false,'monthly_limit'=>5000],['key'=>'payment_gateway','name'=>'Payment Gateway','provider'=>'Manual / Stripe ready','is_enabled'=>false,'monthly_limit'=>null],['key'=>'whatsapp','name'=>'WhatsApp','provider'=>'Cloud API','is_enabled'=>false,'monthly_limit'=>100000]] as $integration) { ApiIntegration::updateOrCreate(['key'=>$integration['key']],$integration); }
         Slider::updateOrCreate(['title'=>'Find the Right Job. Build a Better Career.'],['subtitle'=>'AI-powered recruitment for Singapore, Malaysia, India & More.','cta_text'=>'Search Jobs','cta_url'=>'/#jobs','sort_order'=>1,'web_enabled'=>true,'app_enabled'=>true,'is_active'=>true]);
-        $categoryIcons = ['Construction' => 'hard-hat', 'Manufacturing' => 'factory', 'Warehouse' => 'warehouse', 'Healthcare' => 'heart-pulse', 'Logistics' => 'truck', 'Hospitality' => 'utensils', 'Domestic Worker' => 'house', 'Engineering' => 'settings-2', 'Sales' => 'handshake', 'Administration' => 'clipboard-list', 'Security' => 'shield-check'];
-        $categories = collect(array_keys($categoryIcons))->map(function (string $name, int $index) use ($categoryIcons) {
-            return JobCategory::updateOrCreate(['slug' => str($name)->slug()], ['name' => $name, 'icon' => $categoryIcons[$name], 'icon_image_path' => 'images/lucky-boss-logo.png', 'sort_order' => $index + 1, 'show_on_home' => true, 'is_active' => true]);
-        });
-        $job = Job::firstOrCreate(['company_id' => $company->id, 'title' => 'Warehouse Supervisor'], ['description' => 'Lead warehouse operations and coordinate a high-performing team.', 'country_code' => 'SG', 'location' => 'Singapore', 'job_category_id' => $categories->firstWhere('name', 'Warehouse')->id, 'experience_min' => 3, 'experience_max' => 5, 'salary_min' => 3000, 'salary_max' => 4500, 'currency_code' => 'SGD', 'status' => 'published', 'is_featured' => true, 'published_at' => now(), 'closing_date' => now()->addMonth()]);
+        // The trades are `WorkTaxonomy`'s fourteen, not eleven different names
+        // typed out again here. See JobCategorySeeder for why that mattered.
+        $this->call(JobCategorySeeder::class);
+        $categories = JobCategory::orderBy('sort_order')->get();
+        $job = Job::firstOrCreate(['company_id' => $company->id, 'title' => 'Warehouse Supervisor'], ['description' => 'Lead warehouse operations and coordinate a high-performing team.', 'country_code' => 'SG', 'location' => 'Singapore', 'job_category_id' => $categories->firstWhere('name', 'Warehouse & Logistics')->id, 'experience_min' => 3, 'experience_max' => 5, 'salary_min' => 3000, 'salary_max' => 4500, 'currency_code' => 'SGD', 'status' => 'published', 'is_featured' => true, 'published_at' => now(), 'closing_date' => now()->addMonth()]);
                 $dummyJobs = [
-            ['title'=>'Warehouse Coordinator','category'=>'Warehouse','location'=>'Jurong East','country_code'=>'SG','salary_min'=>2800,'salary_max'=>3800],
+            ['title'=>'Warehouse Coordinator','category'=>'Warehouse & Logistics','location'=>'Jurong East','country_code'=>'SG','salary_min'=>2800,'salary_max'=>3800],
             ['title'=>'Construction Site Supervisor','category'=>'Construction','location'=>'Kallang','country_code'=>'SG','salary_min'=>4200,'salary_max'=>5800],
-            ['title'=>'Logistics Operations Executive','category'=>'Logistics','location'=>'Tuas','country_code'=>'SG','salary_min'=>3200,'salary_max'=>4600],
+            ['title'=>'Logistics Operations Executive','category'=>'Warehouse & Logistics','location'=>'Tuas','country_code'=>'SG','salary_min'=>3200,'salary_max'=>4600],
             ['title'=>'Manufacturing Quality Engineer','category'=>'Manufacturing','location'=>'Shah Alam','country_code'=>'MY','salary_min'=>4500,'salary_max'=>6500],
-            ['title'=>'Healthcare Assistant','category'=>'Healthcare','location'=>'Singapore','country_code'=>'SG','salary_min'=>2400,'salary_max'=>3400],
-            ['title'=>'Hospitality Front Office Manager','category'=>'Hospitality','location'=>'Orchard','country_code'=>'SG','salary_min'=>3600,'salary_max'=>5000],
-            ['title'=>'Recruitment Consultant','category'=>'Recruitment Agency','location'=>'Chennai','country_code'=>'IN','salary_min'=>3000,'salary_max'=>5000],
-            ['title'=>'Retail Store Manager','category'=>'Retail','location'=>'Kuala Lumpur','country_code'=>'MY','salary_min'=>3800,'salary_max'=>5600],
-            ['title'=>'IT Support Specialist','category'=>'IT','location'=>'Paya Lebar','country_code'=>'SG','salary_min'=>3500,'salary_max'=>5200],
-            ['title'=>'Warehouse Picker and Packer','category'=>'Warehouse','location'=>'Woodlands','country_code'=>'SG','salary_min'=>2200,'salary_max'=>3000],
+            ['title'=>'Healthcare Assistant','category'=>'Healthcare & Nursing','location'=>'Singapore','country_code'=>'SG','salary_min'=>2400,'salary_max'=>3400],
+            ['title'=>'Hospitality Front Office Manager','category'=>'Hospitality & F&B','location'=>'Orchard','country_code'=>'SG','salary_min'=>3600,'salary_max'=>5000],
+            ['title'=>'Recruitment Consultant','category'=>'Office & Administration','location'=>'Chennai','country_code'=>'IN','salary_min'=>3000,'salary_max'=>5000],
+            ['title'=>'Retail Store Manager','category'=>'Retail & Sales','location'=>'Kuala Lumpur','country_code'=>'MY','salary_min'=>3800,'salary_max'=>5600],
+            ['title'=>'IT Support Specialist','category'=>'IT & Software','location'=>'Paya Lebar','country_code'=>'SG','salary_min'=>3500,'salary_max'=>5200],
+            ['title'=>'Warehouse Picker and Packer','category'=>'Warehouse & Logistics','location'=>'Woodlands','country_code'=>'SG','salary_min'=>2200,'salary_max'=>3000],
         ];
         foreach ($dummyJobs as $index => $dummy) {
-            $dummyCategory = JobCategory::where('name', $dummy['category'])->first() ?: $categories->first();
+            // No `?: $categories->first()`. That fallback is how an IT Support
+            // Specialist, a Retail Store Manager and a Recruitment Consultant
+            // all ended up filed under Construction on the live site: the names
+            // above named categories that did not exist, and the seeder quietly
+            // put them in whatever came first. Every name here is a taxonomy
+            // category now, so a miss is a mistake and should say so.
+            $dummyCategory = JobCategory::where('name', $dummy['category'])->firstOrFail();
             Job::firstOrCreate(['company_id' => $company->id, 'title' => $dummy['title']], [
                 'description' => "Test job listing for {$dummy['title']}.", 'image_path' => 'images/lucky-boss-logo.png', 'country_code' => $dummy['country_code'], 'location' => $dummy['location'], 'job_category_id' => $dummyCategory?->id, 'experience_min' => $index % 4, 'experience_max' => ($index % 4) + 3, 'salary_min' => $dummy['salary_min'], 'salary_max' => $dummy['salary_max'], 'currency_code' => $dummy['country_code'] === 'IN' ? 'INR' : ($dummy['country_code'] === 'MY' ? 'MYR' : 'SGD'), 'status' => 'published', 'is_featured' => $index < 3, 'is_urgent' => $index === 3, 'published_at' => now()->subDays($index), 'closing_date' => now()->addDays(30 + $index),
             ]);
@@ -115,7 +151,11 @@ class DatabaseSeeder extends Seeder
         $employer = User::firstOrCreate(['email' => 'employer@luckyboss.test'], ['name' => 'Arun Kumar', 'phone' => '+6591234567', 'country_code' => 'SG', 'password' => 'password']);
         $employer->roles()->syncWithoutDetaching([$roles['employer']->id]); $company->users()->syncWithoutDetaching([$employer->id => ['company_role' => 'company-admin', 'is_active' => true]]);
         $candidate = User::firstOrCreate(['email' => 'candidate@luckyboss.test'], ['name' => 'Maya Tan', 'phone' => '+6587654321', 'country_code' => 'SG', 'password' => 'password']);
-        $candidate->roles()->syncWithoutDetaching([$roles['job-seeker']->id]); $candidate->candidateProfile()->firstOrCreate([], ['country_code' => 'SG', 'current_title' => 'Warehouse Coordinator', 'current_location' => 'Singapore', 'preferred_location' => 'Singapore', 'years_experience' => 4, 'profile_completion' => 65]);
+        $candidate->roles()->syncWithoutDetaching([$roles['job-seeker']->id]); // Skills and an expected salary matter here, not as decoration: JobMatchService
+        // refuses to score a candidate it knows nothing about, so without them a fresh
+        // install shows the demo seeker "Upload your resume to see your matches" and
+        // nobody can see matching or Apply All working at all.
+        $candidate->candidateProfile()->firstOrCreate([], ['country_code' => 'SG', 'current_title' => 'Warehouse Coordinator', 'current_location' => 'Singapore', 'preferred_location' => 'Singapore', 'years_experience' => 4, 'expected_salary' => 3000, 'preferred_currency' => 'SGD', 'skills' => ['Forklift', 'Inventory', 'Warehouse', 'Logistics', 'Picking', 'Packing', 'Safety'], 'profile_completion' => 65]);
         // A candidate who has actually applied.
         //
         // The seeder imported JobApplication and never created one, so the

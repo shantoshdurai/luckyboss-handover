@@ -6,6 +6,7 @@ use App\Models\Company;
 use App\Models\Country;
 use App\Models\Job;
 use App\Models\JobCategory;
+use App\Services\WorkTaxonomy;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -74,7 +75,33 @@ class PublicPortalController extends Controller
         ]);
     }
 
-    public function categories(): View { return view('public.categories', ['categories' => JobCategory::with('jobs')->where('is_active', true)->orderBy('sort_order')->get()]); }
+    /**
+     * Browse by trade.
+     *
+     * `with('jobs')` used to load every vacancy in every category, drafts and
+     * closed ones included, so the page could only ever have shown a count that
+     * was wrong. It counts published vacancies instead, and the view shows the
+     * number only when there is one.
+     *
+     * The trades inside each category come from `WorkTaxonomy` -- the same
+     * vocabulary the Flutter app, the seeker agent and the hiring agent use.
+     * A card that says only "Construction" leaves the visitor guessing whether
+     * we mean their job; naming the trades answers it before they click.
+     */
+    public function categories(WorkTaxonomy $taxonomy): View
+    {
+        $categories = JobCategory::withCount(['jobs' => fn ($query) => $query->where('status', 'published')])
+            ->where('is_active', true)
+            ->orderBy('sort_order')
+            ->get();
+
+        return view('public.categories', [
+            'categories' => $categories,
+            'trades' => $categories->mapWithKeys(fn (JobCategory $category) => [
+                $category->id => $taxonomy->roleNames($category->name),
+            ]),
+        ]);
+    }
     public function specializations(): View { return view('public.specializations', ['categories' => JobCategory::where('is_active', true)->orderBy('sort_order')->get(), 'companies' => Company::where('status', 'verified')->take(8)->get()]); }
     public function employers(): View { return view('public.employers', ['companies' => Company::where('status', 'verified')->take(12)->get(), 'packages' => \App\Models\Package::where('is_active', true)->get()]); }
     public function seekers(): View { return view('public.seekers'); }

@@ -5,17 +5,37 @@
         <div class="absolute bottom-0 left-0 w-64 h-64 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none"></div>
 
         <div class="container mx-auto px-6 relative z-10">
-            <div class="max-w-3xl mb-8">
-                <span class="inline-block py-1 px-3.5 rounded-full bg-white/10 border border-white/20 text-xs font-semibold tracking-wider uppercase mb-3 text-emerald-300">
-                    Verified Opportunities
-                </span>
-                <h1 class="text-3xl md:text-5xl font-heading font-extrabold text-white mb-3 leading-tight tracking-tight">
-                    Modern Job Opportunities List
-                </h1>
-                <p class="text-slate-300 text-sm md:text-base max-w-2xl">
-                    Discover verified vacancies across Singapore, Malaysia, and India with real-time application tracking and AI match scoring.
-                </p>
-            </div>
+            {{-- Two heroes, because the page has two audiences. A visitor gets
+                 the pitch; a signed-in candidate has already bought it, and
+                 reading "Discover verified vacancies across Singapore, Malaysia
+                 and India" over their own job list is what made this screen feel
+                 like the signed-out site to sir. Theirs is a compact bar that
+                 gets out of the way of the search. --}}
+            @php $jobsSeeker = auth()->check() && auth()->user()->hasRole('job-seeker'); @endphp
+
+            @if ($jobsSeeker)
+                <div class="max-w-3xl mb-6">
+                    <h1 class="text-2xl md:text-3xl font-heading font-extrabold text-white leading-tight tracking-tight">
+                        Every open vacancy
+                    </h1>
+                    <p class="text-slate-300 text-sm mt-1">
+                        Search all of them, or
+                        <a href="{{ route('seeker.resume.matches') }}" class="font-bold text-emerald-300 hover:underline">see just the ones that fit you</a>.
+                    </p>
+                </div>
+            @else
+                <div class="max-w-3xl mb-8">
+                    <span class="inline-block py-1 px-3.5 rounded-full bg-white/10 border border-white/20 text-xs font-semibold tracking-wider uppercase mb-3 text-emerald-300">
+                        Verified Opportunities
+                    </span>
+                    <h1 class="text-3xl md:text-5xl font-heading font-extrabold text-white mb-3 leading-tight tracking-tight">
+                        Modern Job Opportunities List
+                    </h1>
+                    <p class="text-slate-300 text-sm md:text-base max-w-2xl">
+                        Discover verified vacancies across Singapore, Malaysia, and India with real-time application tracking and AI match scoring.
+                    </p>
+                </div>
+            @endif
 
             {{-- Fast Search Bar --}}
             <form method="GET" action="{{ route('jobs.index') }}" class="bg-white/95 backdrop-blur-md p-3 rounded-2xl shadow-2xl border border-white/20">

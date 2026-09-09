@@ -1,4 +1,4 @@
-<x-employer-sidebar :title="$job->title . ' — Applicants'">
+<x-employer-shell :title="$job->title . ' — Applicants'">
     <div class="space-y-6">
         {{-- Top Navigation & Summary --}}
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-border shadow-xs">
@@ -170,4 +170,4 @@
             @endforelse
         </div>
     </div>
-</x-employer-sidebar>
+</x-employer-shell>

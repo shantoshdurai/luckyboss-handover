@@ -1,4 +1,4 @@
-<x-employer-sidebar :title="$job ? 'Edit Job Opening' : 'Post New Job Opening'">
+<x-employer-shell :title="$job ? 'Edit Job Opening' : 'Post New Job Opening'">
     <div class="max-w-4xl mx-auto space-y-6">
         {{-- Top Back Link & Header --}}
         <div class="flex items-center justify-between">
@@ -13,6 +13,17 @@
                 <p class="text-xs text-text-muted mt-0.5">Publish roles directly to verified candidates across Singapore, Malaysia, and India.</p>
             </div>
         </div>
+
+        {{-- Where the values came from. Said out loud rather than left for the
+             employer to notice: a form that has quietly filled itself in is a
+             form nobody proof-reads, and everything below is still theirs to
+             correct before it goes on the board. --}}
+        @if ($prefill)
+            <div class="p-4 rounded-2xl bg-accent/5 border border-accent/30 text-navy text-xs font-semibold flex items-start gap-2 shadow-xs">
+                <svg class="w-4 h-4 text-accent shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                <span>Filled in from what you told the hiring agent. Check it over — nothing is published until you press the button at the bottom.</span>
+            </div>
+        @endif
 
         {{-- Main Form Card --}}
         <div class="bg-white rounded-3xl border border-border p-8 shadow-xs">
@@ -43,7 +54,7 @@
                         <label class="block text-xs font-bold text-navy uppercase tracking-wider mb-2">
                             Job Title <span class="text-red-500">*</span>
                         </label>
-                        <input type="text" name="title" value="{{ old('title', $job?->title) }}" placeholder="e.g. Warehouse Operations Lead, Cloud DevOps Engineer" required class="w-full px-4 py-3 rounded-xl border border-border text-sm text-navy focus:border-navy focus:ring-1 focus:ring-navy transition-all">
+                        <input type="text" name="title" value="{{ old('title', $job?->title ?? $prefill?->title) }}" placeholder="e.g. Warehouse Operations Lead, Cloud DevOps Engineer" required class="w-full px-4 py-3 rounded-xl border border-border text-sm text-navy focus:border-navy focus:ring-1 focus:ring-navy transition-all">
                     </div>
 
                     {{-- Category --}}
@@ -54,7 +65,7 @@
                         <select name="job_category_id" required class="w-full px-4 py-3 rounded-xl border border-border text-sm text-navy focus:border-navy focus:ring-1 focus:ring-navy transition-all">
                             <option value="">Select Category</option>
                             @foreach($categories as $category)
-                                <option value="{{ $category->id }}" @selected(old('job_category_id', $job?->job_category_id) == $category->id)>
+                                <option value="{{ $category->id }}" @selected(old('job_category_id', $job?->job_category_id ?? $prefill?->job_category_id) == $category->id)>
                                     {{ $category->name }}
                                 </option>
                             @endforeach
@@ -69,7 +80,7 @@
                         <select name="country_code" required class="w-full px-4 py-3 rounded-xl border border-border text-sm text-navy focus:border-navy focus:ring-1 focus:ring-navy transition-all">
                             <option value="">Select Country</option>
                             @foreach($countries as $country)
-                                <option value="{{ $country->code }}" @selected(old('country_code', $job?->country_code) === $country->code)>
+                                <option value="{{ $country->code }}" @selected(old('country_code', $job?->country_code ?? $prefill?->country_code) === $country->code)>
                                     {{ $country->name }} ({{ $country->code }})
                                 </option>
                             @endforeach
@@ -81,7 +92,7 @@
                         <label class="block text-xs font-bold text-navy uppercase tracking-wider mb-2">
                             City / District Location
                         </label>
-                        <input type="text" name="location" value="{{ old('location', $job?->location) }}" placeholder="e.g. Singapore, Jurong or India, Bengaluru" class="w-full px-4 py-3 rounded-xl border border-border text-sm text-navy focus:border-navy focus:ring-1 focus:ring-navy transition-all">
+                        <input type="text" name="location" value="{{ old('location', $job?->location ?? $prefill?->location) }}" placeholder="e.g. Singapore, Jurong or India, Bengaluru" class="w-full px-4 py-3 rounded-xl border border-border text-sm text-navy focus:border-navy focus:ring-1 focus:ring-navy transition-all">
                     </div>
 
                     {{-- Work Mode --}}
@@ -117,7 +128,7 @@
                         <label class="block text-xs font-bold text-navy uppercase tracking-wider mb-2">
                             Open Vacancies <span class="text-red-500">*</span>
                         </label>
-                        <input type="number" min="1" name="vacancies" value="{{ old('vacancies', $job?->vacancies ?? 1) }}" required class="w-full px-4 py-3 rounded-xl border border-border text-sm text-navy focus:border-navy focus:ring-1 focus:ring-navy transition-all">
+                        <input type="number" min="1" name="vacancies" value="{{ old('vacancies', $job?->vacancies ?? $prefill?->vacancies ?? 1) }}" required class="w-full px-4 py-3 rounded-xl border border-border text-sm text-navy focus:border-navy focus:ring-1 focus:ring-navy transition-all">
                     </div>
 
                     {{-- Experience Range --}}
@@ -126,8 +137,8 @@
                             Experience Range (Years)
                         </label>
                         <div class="grid grid-cols-2 gap-3">
-                            <input type="number" min="0" name="experience_min" placeholder="Min (e.g. 2)" value="{{ old('experience_min', $job?->experience_min) }}" class="w-full px-4 py-3 rounded-xl border border-border text-sm text-navy focus:border-navy focus:ring-1 focus:ring-navy transition-all">
-                            <input type="number" min="0" name="experience_max" placeholder="Max (e.g. 5)" value="{{ old('experience_max', $job?->experience_max) }}" class="w-full px-4 py-3 rounded-xl border border-border text-sm text-navy focus:border-navy focus:ring-1 focus:ring-navy transition-all">
+                            <input type="number" min="0" name="experience_min" placeholder="Min (e.g. 2)" value="{{ old('experience_min', $job?->experience_min ?? $prefill?->experience_min) }}" class="w-full px-4 py-3 rounded-xl border border-border text-sm text-navy focus:border-navy focus:ring-1 focus:ring-navy transition-all">
+                            <input type="number" min="0" name="experience_max" placeholder="Max (e.g. 5)" value="{{ old('experience_max', $job?->experience_max ?? $prefill?->experience_max) }}" class="w-full px-4 py-3 rounded-xl border border-border text-sm text-navy focus:border-navy focus:ring-1 focus:ring-navy transition-all">
                         </div>
                     </div>
 
@@ -138,7 +149,7 @@
                         </label>
                         <div class="grid grid-cols-3 gap-2">
                             <input type="number" min="0" name="salary_min" placeholder="Min (e.g. 3500)" value="{{ old('salary_min', $job?->salary_min) }}" class="w-full px-3 py-3 rounded-xl border border-border text-sm text-navy focus:border-navy focus:ring-1 focus:ring-navy transition-all">
-                            <input type="number" min="0" name="salary_max" placeholder="Max (e.g. 5000)" value="{{ old('salary_max', $job?->salary_max) }}" class="w-full px-3 py-3 rounded-xl border border-border text-sm text-navy focus:border-navy focus:ring-1 focus:ring-navy transition-all">
+                            <input type="number" min="0" name="salary_max" placeholder="Max (e.g. 5000)" value="{{ old('salary_max', $job?->salary_max ?? $prefill?->salary_max) }}" class="w-full px-3 py-3 rounded-xl border border-border text-sm text-navy focus:border-navy focus:ring-1 focus:ring-navy transition-all">
                             <select name="currency_code" required class="w-full px-2 py-3 rounded-xl border border-border text-sm text-navy font-bold focus:border-navy focus:ring-1 focus:ring-navy transition-all">
                                 <option value="SGD" @selected(old('currency_code', $job?->currency_code ?? 'SGD') === 'SGD')>SGD ($)</option>
                                 <option value="INR" @selected(old('currency_code', $job?->currency_code) === 'INR')>INR (₹)</option>
@@ -161,7 +172,7 @@
                         <label class="block text-xs font-bold text-navy uppercase tracking-wider mb-2">
                             Job Description & Key Responsibilities <span class="text-red-500">*</span>
                         </label>
-                        <textarea name="description" rows="6" maxlength="500" required placeholder="Outline key tasks, deliverables, and role expectations..." class="w-full px-4 py-3 rounded-xl border border-border text-sm text-navy focus:border-navy focus:ring-1 focus:ring-navy transition-all">{{ old('description', $job?->description) }}</textarea>
+                        <textarea name="description" rows="6" maxlength="500" required placeholder="Outline key tasks, deliverables, and role expectations..." class="w-full px-4 py-3 rounded-xl border border-border text-sm text-navy focus:border-navy focus:ring-1 focus:ring-navy transition-all">{{ old('description', $job?->description ?? $prefill?->description) }}</textarea>
                     </div>
 
                     {{-- Requirements --}}
@@ -202,4 +213,4 @@
             </form>
         </div>
     </div>
-</x-employer-sidebar>
+</x-employer-shell>

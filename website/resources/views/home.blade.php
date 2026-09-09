@@ -21,6 +21,7 @@
     .lb-d2 { animation-delay: .13s; }
     .lb-d3 { animation-delay: .21s; }
     .lb-d4 { animation-delay: .29s; }
+    .lb-d5 { animation-delay: .37s; }
 
     /* Scroll reveal. Visible by default; JS hides then releases it, so the
        content is never lost when scripting is off or an observer fails. */
@@ -42,8 +43,15 @@
     .lb-card {
         position: relative;
         background: #fff;
-        border: 1px solid #E4EAF2;
+        border: 1px solid var(--color-border);
         border-radius: 18px;
+        /* A resting elevation, not only a hover one. White cards on the
+           #F2F6FC ground with just a hairline read as empty space until you
+           touch them — the hero's four doors were effectively invisible at a
+           glance, which is fatal for the one row the page asks you to choose
+           from. Kept shallow so the page still reads flat and calm; the hover
+           lift below is what actually responds. */
+        box-shadow: 0 1px 2px rgba(3,31,73,.05), 0 6px 16px -10px rgba(3,31,73,.28);
         transition: transform .3s cubic-bezier(.22,.61,.36,1),
                     box-shadow .3s cubic-bezier(.22,.61,.36,1),
                     border-color .3s ease;
@@ -69,9 +77,9 @@
         width: 46px; height: 46px; border-radius: 13px;
         display: flex; align-items: center; justify-content: center;
         background: #EAF6F0; color: #18A66A;
-        transition: background .3s ease, color .3s ease, transform .35s cubic-bezier(.34,1.56,.64,1);
+        transition: background .3s ease, color .3s ease;
     }
-    .lb-card:hover .lb-tile { background: #18A66A; color: #fff; transform: rotate(-6deg) scale(1.06); }
+    .lb-card:hover .lb-tile { background: #18A66A; color: #fff; }
 
     /* The photograph lifts with the card rather than sitting still inside it. */
     .lb-shot { transition: transform .7s cubic-bezier(.22,.61,.36,1); }
@@ -83,42 +91,38 @@
     .lb-scroll-cue:hover svg { animation-duration: 1.1s; }
 
 
-    /* The rolling placeholder animation. Rolls up smoothly. */
+    /* Fade up, hold, fade out. The hold is deliberately most of the cycle:
+       at the original 18-82% the term was invisible for over a second in every
+       three, and a hero that is blank a third of the time reads as broken. */
     @keyframes lb-roll {
-        0%, 8%    { opacity: 0; transform: translateY(8px); }
-        18%, 82%  { opacity: 1; transform: translateY(0); }
-        92%, 100% { opacity: 0; transform: translateY(-8px); }
+        0%, 4%    { opacity: 0; transform: translateY(8px); }
+        12%, 90%  { opacity: 1; transform: translateY(0); }
+        98%, 100% { opacity: 0; transform: translateY(-8px); }
     }
-    .lb-ghost {
-        position: absolute;
-        left: 46px;
-        top: 0;
-        height: 100%;
-        display: flex;
-        align-items: center;
-        pointer-events: none;
-        font-size: 15px;
-        font-weight: 500;
-        color: #9AA8BA;
-        white-space: nowrap;
+    /* The rolling trade name in the hero. Was a ghost placeholder inside the
+       search field; it is a line of text now that the field is gone. The clip
+       keeps each term rising into place rather than sliding past the line. */
+    /* The height is reserved, not measured. Job titles come from real
+       vacancies and vary from "Forklift Driver" to "Supply Chain & Logistics
+       Operations Lead"; on a phone the long ones take two lines. Without a
+       floor here the four doors below jump up and down every three seconds. */
+    .lb-roller {
         overflow: hidden;
-        text-overflow: ellipsis;
-        max-width: calc(100% - 60px);
-        user-select: none;
-        z-index: 2;
+        text-align: center;
+        min-height: 56px;
     }
-    .lb-ghost span {
+    @media (min-width: 640px) {
+        .lb-roller { min-height: 32px; }
+    }
+    .lb-roller [data-roller] {
         display: inline-block;
         animation: lb-roll 3s ease-in-out infinite;
     }
 
-    /* Instantly and completely hide the ghost placeholder when user focuses or types */
-    #keyword:focus ~ .lb-ghost,
-    #keyword:not(:placeholder-shown) ~ .lb-ghost,
-    .lb-ghost.lb-hidden {
-        display: none !important;
-        opacity: 0 !important;
-        visibility: hidden !important;
+    /* Motion is decoration here. Anyone who has asked the OS for less of it
+       gets the term sitting still, which reads exactly as well. */
+    @media (prefers-reduced-motion: reduce) {
+        .lb-roller [data-roller] { animation: none; }
     }
 
     .lb-arrow { transition: transform .3s cubic-bezier(.22,.61,.36,1); }
@@ -206,39 +210,43 @@
             document.querySelectorAll('.lb-reveal:not(.lb-in)').forEach(reveal);
         }, 3000);
 
-        // Rolling search suggestions with smooth roll-up animation
-        var ghost = document.querySelector('[data-ghost]');
-        var input = document.getElementById('keyword');
+        // The rolling trade name under the headline.
+        //
+        // This must wait for the DOM. The element sits several hundred lines
+        // below in the same document, so querying it at parse time returns null
+        // and the interval is never created — which is what the search-box
+        // version of this code did, silently. The "rolling" terms never rolled;
+        // every visitor saw the same one job title fading in and out forever.
+        //
+        // Each swap restarts the fade rather than trying to land inside one.
+        // Hanging the change off the animationiteration event reads better but
+        // does not survive contact with reality — the event is not delivered in
+        // an embedded or background view even while the animation itself keeps
+        // running, so the word silently stops changing. Restarting the
+        // animation makes the timer the single source of phase: the term can
+        // never change while it is visible, whatever the browser is doing with
+        // animation events.
         var terms = @json($rollingTerms ?? []);
-        if (ghost && input && terms && terms.length) {
+
+        function startRoller() {
+            var roller = document.querySelector('[data-roller]');
+            if (!roller || terms.length < 2) return;
+
             var i = 0;
-            var inner = ghost.querySelector('span');
+            setInterval(function () {
+                i = (i + 1) % terms.length;
 
-            var updateVisibility = function () {
-                if (document.activeElement === input || (input.value && input.value.trim().length > 0)) {
-                    ghost.style.display = 'none';
-                } else {
-                    ghost.style.display = 'flex';
-                }
-            };
+                roller.style.animation = 'none';
+                void roller.offsetWidth; // forces the restart to take effect
+                roller.textContent = terms[i];
+                roller.style.animation = '';
+            }, 3000);
+        }
 
-            input.addEventListener('focus', function () { ghost.style.display = 'none'; });
-            input.addEventListener('blur', updateVisibility);
-            input.addEventListener('input', updateVisibility);
-            input.addEventListener('keydown', function () { ghost.style.display = 'none'; });
-
-            updateVisibility();
-
-            if (inner) {
-                setInterval(function () {
-                    if (document.activeElement === input || (input.value && input.value.trim().length > 0)) {
-                        ghost.style.display = 'none';
-                        return;
-                    }
-                    i = (i + 1) % terms.length;
-                    inner.textContent = terms[i];
-                }, 3000);
-            }
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', startRoller);
+        } else {
+            startRoller();
         }
     })();
 </script>
@@ -257,56 +265,41 @@
          you to scroll.
     ═══════════════════════════════════════════════════════════════ --}}
     <section class="relative flex flex-col"
-             style="background:#F7F9FC; min-height:calc(100vh - 88px);">
+             style="background:var(--color-surface); min-height:calc(100vh - 88px);">
 
         <div class="container mx-auto px-6 max-w-4xl flex-1 flex flex-col justify-center text-center py-10">
 
-            <p class="lb-enter text-xs font-bold uppercase tracking-[0.16em] mb-4" style="color:#18A66A;">
-                Singapore &middot; Malaysia &middot; India
-            </p>
+            {{--
+                The question is the small line and the promise is the headline,
+                which is the way round sir asked for. It reads better too: the
+                question is context the visitor already has by the time they
+                arrive, and what they actually need to be told is that choosing
+                one of the four costs them nothing and lands them somewhere.
 
-            <h1 class="lb-enter lb-d1 font-heading font-bold tracking-tight leading-[1.08] mb-3 text-[34px] sm:text-[48px] lg:text-[56px]"
-                style="color:#031F49;">
+                "Singapore - Malaysia - India" was removed with it. It sat above
+                the headline as the very first thing on the page, spending the
+                most valuable line telling people which countries we cover
+                before telling them what we do.
+            --}}
+            <p class="lb-enter text-sm sm:text-base mb-3" style="color:var(--color-text-muted);">
                 What brings you here today?
-            </h1>
-
-            <p class="lb-enter lb-d2 text-base sm:text-lg mb-9 max-w-xl mx-auto" style="color:#5A6C82;">
-                Pick one and we will take you straight to it.
             </p>
 
-            <form action="{{ route('jobs.index') }}" method="GET"
-                  class="lb-enter lb-d3"
-                  style="display:flex;align-items:center;gap:10px;max-width:620px;width:100%;margin:0 auto 32px auto;">
-                <label for="keyword" class="sr-only">Search jobs</label>
-                <div style="position:relative;flex:1;display:flex;align-items:center;">
-                    <svg style="position:absolute;left:16px;top:50%;transform:translateY(-50%);width:19px;height:19px;color:#9AA8BA;pointer-events:none;z-index:3;"
-                         fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z"/>
-                    </svg>
-                    <input id="keyword" name="keyword" type="text" autocomplete="off" spellcheck="false"
-                           value="{{ request('keyword') }}"
-                           placeholder=" "
-                           style="width:100%;height:50px;padding-left:46px;padding-right:16px;border-radius:16px;border:1.5px solid #E4EAF2;background:#fff;color:#031F49;font-size:15px;font-weight:500;outline:none;box-sizing:border-box;transition:border-color 0.2s,box-shadow 0.2s;"
-                           onfocus="this.style.borderColor='#18A66A';this.style.boxShadow='0 0 0 4px rgba(24,166,106,.15)'"
-                           onblur="this.style.borderColor='#E4EAF2';this.style.boxShadow='none'">
-                    <span class="lb-ghost" data-ghost aria-hidden="true">
-                        <span>{{ $rollingTerms[0] ?? 'Warehouse Supervisor' }}</span>
-                    </span>
-                </div>
-                <button type="submit"
-                        style="height:50px;padding:0 24px;border-radius:16px;background:#031F49;color:#fff;font-size:15px;font-weight:700;border:none;cursor:pointer;flex-shrink:0;transition:background 0.2s;"
-                        onmouseover="this.style.background='#052a63'"
-                        onmouseout="this.style.background='#031F49'">
-                    Search
-                </button>
-            </form>
+            <h1 class="lb-enter lb-d1 font-heading font-bold tracking-tight leading-[1.08] mb-9 text-3xl sm:text-4xl lg:text-5xl"
+                style="color:#031F49;">
+                Pick one and we will take you straight to it.
+            </h1>
 
             @php
                 $doors = [
                     [
                         'label' => 'Find a job',
                         'note'  => $stats['activeJobs'] . ' open now',
-                        'href'  => route('jobs.index'),
+                        // Guests are sent to sign in first, the way TickBig
+                        // gates its own doors. `intended` means they land on the
+                        // jobs list straight after, rather than on a dashboard
+                        // wondering where the vacancies went.
+                        'href'  => auth()->check() ? route('jobs.index') : route('login'),
                         'icon'  => 'M20.25 14.15v4.073a2.25 2.25 0 0 1-1.632 2.163l-1.32.377a12.06 12.06 0 0 1-6.596 0l-1.32-.377a2.25 2.25 0 0 1-1.632-2.163V14.15M3.75 8.25v10.5a2.25 2.25 0 0 0 2.25 2.25h12a2.25 2.25 0 0 0 2.25-2.25V8.25M3.75 8.25h16.5M9 5.25V4.5A1.5 1.5 0 0 1 10.5 3h3a1.5 1.5 0 0 1 1.5 1.5v.75',
                     ],
                     [
@@ -318,13 +311,13 @@
                     [
                         'label' => 'Browse by trade',
                         'note'  => 'Construction, driving, care',
-                        'href'  => route('categories.index'),
+                        'href'  => auth()->check() ? route('categories.index') : route('login'),
                         'icon'  => 'M11.42 15.17 17.25 21A2.652 2.652 0 0 0 21 17.25l-5.877-5.877M11.42 15.17l-4.655 5.653a2.548 2.548 0 1 1-3.586-3.586l6.837-5.63m5.108-.233c.55-.164 1.163-.188 1.743-.14a4.5 4.5 0 0 0 4.486-6.336l-3.276 3.277a3.004 3.004 0 0 1-2.25-2.25l3.276-3.276a4.5 4.5 0 0 0-6.336 4.486c.091 1.076-.071 2.264-.904 2.95l-.102.085',
                     ],
                     [
-                        'label' => 'I have an account',
-                        'note'  => 'Sign in',
-                        'href'  => route('login'),
+                        'label' => auth()->check() ? 'My dashboard' : 'I have an account',
+                        'note'  => auth()->check() ? 'Go to your portal' : 'Sign in',
+                        'href'  => auth()->check() ? route('seeker.dashboard') : route('login'),
                         'icon'  => 'M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15M12 9l3 3m0 0-3 3m3-3H2.25',
                     ],
                 ];
@@ -338,32 +331,45 @@
                                 <path stroke-linecap="round" stroke-linejoin="round" d="{{ $door['icon'] }}"/>
                             </svg>
                         </span>
-                        <span class="block font-bold text-[15px] sm:text-base leading-snug" style="color:#031F49;">
+                        <span class="block font-bold text-sm sm:text-base leading-snug" style="color:#031F49;">
                             {{ $door['label'] }}
-                        </span>
-                        <span class="block text-xs sm:text-[13px] mt-1" style="color:#8494A8;">
-                            {{ $door['note'] }}
                         </span>
                     </a>
                 @endforeach
             </div>
 
-            {{-- Counted from the database. The sign-in page used to advertise
-                 5,000 jobs against a table holding 14. --}}
-            <p class="lb-enter lb-d4 text-sm" style="color:#8494A8;">
-                <strong style="color:#031F49;">{{ number_format($stats['activeJobs']) }}</strong>
-                {{ Str::plural('live vacancy', $stats['activeJobs']) }}
-                &middot;
-                <strong style="color:#031F49;">{{ number_format($stats['employers']) }}</strong>
-                verified {{ Str::plural('employer', $stats['employers']) }}
-            </p>
+            {{--
+                The search box used to sit above the doors. Sir had it removed:
+                a search field asks the visitor to know what to type before the
+                page has told them anything, and it competed with the four doors
+                for the same decision. The doors are the entry point now — one
+                tap, and the rest of the flow (upload a resume, matching, apply)
+                follows from there.
+
+                What the search box was really doing was showing the kind of work
+                we carry, so that survives as this line, moved below the doors
+                where the vacancy counter used to sit. Label above, rolling trade
+                below, height reserved — kept inline at first, which meant a long
+                title like "Supply Chain & Logistics Operations Lead" wrapped and
+                shoved the doors down every three seconds.
+            --}}
+            <div class="lb-enter lb-d5 mt-2">
+                <p class="text-[11px] font-bold uppercase tracking-widest mb-1" style="color:var(--color-text-muted);">
+                    Hiring now for
+                </p>
+                <p class="lb-roller flex items-center justify-center px-4 text-lg sm:text-xl font-bold"
+                   style="color:#031F49;"
+                   aria-live="polite">
+                    <span data-roller>{{ $rollingTerms[0] ?? 'Warehouse Supervisor' }}</span>
+                </p>
+            </div>
         </div>
 
         {{-- Pinned to the bottom edge of the screen, so it is the last thing
              you reach and scrolling from it lands on the next full section. --}}
         <div class="pb-8 text-center">
             <a href="#browse" class="lb-scroll-cue inline-flex flex-col items-center gap-1 text-sm font-semibold"
-               style="color:#5A6C82;">
+               style="color:var(--color-text-secondary);">
                 See the jobs
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5"/>
@@ -446,7 +452,6 @@
                                 break;
                             }
                         }
-                        $jobCount = $category->jobs_count ?? ($category->jobs ? $category->jobs->count() : 0);
                     @endphp
                     <a href="{{ route('jobs.index', ['category' => $category->id]) }}"
                        class="lb-card lb-reveal group flex flex-col overflow-hidden">
@@ -476,9 +481,19 @@
                                 </svg>
                             </span>
 
-                            <span class="lb-count" style="position:absolute;right:14px;top:14px;background:rgba(255,255,255,.94);">
-                                {{ number_format($jobCount) }} {{ Str::plural('job', $jobCount) }}
-                            </span>
+                            {{-- No job count on the badge.
+
+                                 It read "0 jobs" on any trade nobody had posted
+                                 to yet, and "1 job" on most of the rest, which
+                                 makes a board look empty at exactly the moment a
+                                 visitor is deciding whether it is worth their
+                                 time. The count is real information but it is
+                                 not information that helps here — the card's job
+                                 is to get them into the trade, and the listing
+                                 page shows the true number once they are there.
+
+                                 If a count comes back, show it only above a
+                                 threshold; do not reintroduce it unconditionally. --}}
                         </div>
 
                         <div class="p-5 flex flex-col flex-1">
@@ -486,7 +501,7 @@
                                 {{ $category->name }}
                             </h3>
 
-                            <p class="text-[13px] leading-relaxed mb-4 flex-1" style="color:#7A8AA0;">
+                            <p class="text-[13px] leading-relaxed mb-4 flex-1" style="color:var(--color-text-muted);">
                                 {{ $category->description ?? 'Verified openings from employers hiring across Singapore, Malaysia and India.' }}
                             </p>
 
@@ -518,7 +533,14 @@
     {{-- ═══════════════════════════════════════════════════════════
          3. FEATURED OPPORTUNITIES (Rich Animated Cards with Skills & Perks)
     ═══════════════════════════════════════════════════════════════ --}}
-    <section class="py-24 lg:py-32 bg-[#f8fafc] border-y border-border" x-data="{ visible: false }" x-intersect.threshold.10="visible = true">
+    {{-- Anchor for the header's "Opportunities" link, which scrolls here rather
+         than leaving the page — the same behaviour as "Explore" and #browse.
+         A guest previously got bounced straight to sign-in from the nav, before
+         they had seen a single vacancy. Now they see the vacancies first, and
+         sign-in is asked for at the point they open one. --}}
+    <span id="opportunities"></span>
+
+    <section class="py-24 lg:py-32 bg-[var(--color-surface)] border-y border-border" x-data="{ visible: false }" x-intersect.threshold.10="visible = true">
         <div class="container mx-auto px-6 transition-all duration-700 transform" :class="visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'">
             {{-- Section Header --}}
             <div class="flex flex-col md:flex-row md:items-end justify-between mb-14 gap-6">
@@ -535,7 +557,7 @@
                     </p>
                 </div>
                 <a href="{{ route('jobs.index') }}" class="btn btn-primary btn-md shrink-0 shadow-md hover:shadow-xl hover:scale-102 transition-all">
-                    <span>Explore All 5,000+ Jobs</span>
+                    <span>Explore all jobs</span>
                     <svg class="w-4 h-4 ml-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
                 </a>
             </div>
@@ -618,9 +640,28 @@
             {{-- Job Cards Grid --}}
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-7">
                 @forelse($featuredJobs as $job)
-                    @php 
+                    @php
                         $companyName = $job->company->name ?? 'Corporate Partner';
                         $titleLower = strtolower($job->title);
+
+                        /*
+                         * Opening a vacancy is where the account is asked for.
+                         * A guest browses this section freely — that is the
+                         * point of it — but following a job through goes to
+                         * sign-in.
+                         *
+                         * No ?redirect= is carried, deliberately. AuthController
+                         * always lands on the role dashboard and calls
+                         * session()->forget('url.intended') on the way, so any
+                         * destination passed here would be silently dropped.
+                         * Returning to the chosen job after sign-in needs that
+                         * controller changed, and its intended-URL clearing is
+                         * itself a fix for role-session bleed — not something to
+                         * undo in passing from a Blade file.
+                         */
+                        $jobHref = auth()->check()
+                            ? route('jobs.index', ['keyword' => $job->title])
+                            : route('login');
                         
                         $matchedProfile = [
                             'sector' => 'Corporate Enterprise',
@@ -666,7 +707,7 @@
 
                             {{-- Role Title (Crisp Navy Text, No Electric Blue) --}}
                             <h3 class="font-heading font-extrabold text-xl sm:text-2xl text-navy group-hover:text-secondary-600 transition-colors line-clamp-1 mb-2">
-                                <a href="{{ route('jobs.index', ['keyword' => $job->title]) }}" class="hover:underline">{{ $job->title }}</a>
+                                <a href="{{ $jobHref }}" class="hover:underline">{{ $job->title }}</a>
                             </h3>
 
                             {{-- Verified Company & Location --}}
@@ -680,7 +721,7 @@
                             {{-- Skill Tag Pills --}}
                             <div class="flex flex-wrap gap-1.5 mb-5">
                                 @foreach($matchedProfile['skills'] as $skill)
-                                    <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium bg-[#f8fafc] text-slate-700 border border-slate-200 group-hover:bg-slate-100 transition-colors">
+                                    <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium bg-[var(--color-surface)] text-slate-700 border border-slate-200 group-hover:bg-slate-100 transition-colors">
                                         {{ $skill }}
                                     </span>
                                 @endforeach
@@ -715,7 +756,7 @@
                                     <span>Applied</span>
                                 </a>
                             @else
-                                <a href="{{ route('jobs.index', ['keyword' => $job->title]) }}" class="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-xl bg-navy hover:bg-slate-800 text-white text-xs font-bold shadow-xs hover:shadow-md transition-all">
+                                <a href="{{ $jobHref }}" class="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-xl bg-navy hover:bg-slate-800 text-white text-xs font-bold shadow-xs hover:shadow-md transition-all">
                                     <span>Apply Now</span>
                                     <svg class="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
                                 </a>
@@ -817,7 +858,7 @@
          5. RECRUITMENT INTELLIGENCE & BLOG
     ═══════════════════════════════════════════════════════════════ --}}
     @if(isset($blogs) && $blogs->count() > 0)
-    <section class="py-20 lg:py-28 bg-[#f8fafc] border-y border-border" x-data="{ visible: false }" x-intersect.threshold.15="visible = true">
+    <section class="py-20 lg:py-28 bg-[var(--color-surface)] border-y border-border" x-data="{ visible: false }" x-intersect.threshold.15="visible = true">
         <div class="container mx-auto px-6 transition-all duration-700 transform" :class="visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'">
             <div class="flex flex-col md:flex-row md:items-end justify-between mb-12 gap-5">
                 <div>
@@ -862,26 +903,26 @@
 
                         <div class="p-6 flex-1 flex flex-col">
                             <div class="flex items-center gap-2.5 mb-3">
-                                <span class="text-[10px] font-bold uppercase tracking-[0.12em] px-2.5 py-1 rounded-full"
+                                <span class="text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-full"
                                       style="background:#EAF6F0;color:#127A50;">
                                     {{ $blog->category ?? 'Career' }}
                                 </span>
-                                <span class="text-[11px]" style="color:#9AA8BA;">
+                                <span class="text-[11px]" style="color:var(--color-text-muted);">
                                     {{ $blog->published_at ? $blog->published_at->format('j M Y') : now()->format('j M Y') }}
                                 </span>
                             </div>
 
-                            <h3 class="text-[19px] font-heading font-bold mb-2.5 leading-snug" style="color:#031F49;">
+                            <h3 class="text-lg font-heading font-bold mb-2.5 leading-snug" style="color:#031F49;">
                                 <a href="{{ route('blogs.show', $blog->slug) }}">{{ $blog->title }}</a>
                             </h3>
 
-                            <p class="text-[13px] leading-relaxed mb-6 flex-1" style="color:#7A8AA0;">
+                            <p class="text-[13px] leading-relaxed mb-6 flex-1" style="color:var(--color-text-muted);">
                                 {{ $blog->short_description ?? Str::limit(strip_tags($blog->content), 130) }}
                             </p>
 
                             <a href="{{ route('blogs.show', $blog->slug) }}"
                                class="inline-flex items-center gap-1.5 text-[13px] font-bold pt-4"
-                               style="color:#18A66A;border-top:1px solid #EEF2F7;">
+                               style="color:#18A66A;border-top:1px solid var(--color-border);">
                                 Read the guide
                                 <svg class="lb-arrow w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3"/>

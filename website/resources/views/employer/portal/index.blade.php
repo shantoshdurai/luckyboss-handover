@@ -1,4 +1,4 @@
-<x-employer-sidebar :title="str($section)->headline() . ' — Employer Portal'">
+<x-employer-shell :title="str($section)->headline() . ' — Employer Portal'">
     <div class="space-y-6">
         {{-- Section Header --}}
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-border shadow-xs">
@@ -530,4 +530,4 @@
             </div>
         @endif
     </div>
-</x-employer-sidebar>
+</x-employer-shell>

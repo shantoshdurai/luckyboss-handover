@@ -26,7 +26,7 @@
         cms: {{ request()->routeIs('admin.cms.*', 'admin.blogs.*') ? 'true' : 'false' }},
         comms: {{ request()->routeIs('admin.communication.*', 'admin.notifications.*', 'admin.support-center.*', 'admin.support*') ? 'true' : 'false' }},
         reports: {{ request()->routeIs('admin.reports.*', 'admin.control-center.*') ? 'true' : 'false' }},
-        settings: {{ request()->routeIs('admin.site-settings.*') ? 'true' : 'false' }}
+        settings: {{ request()->routeIs('admin.site-settings.*', 'admin.job-matching.*', 'admin.entitlements.*') ? 'true' : 'false' }}
     },
     toggleDropdown(name) {
         this.openDropdowns[name] = !this.openDropdowns[name];
@@ -266,8 +266,8 @@
                     <button @click="toggleDropdown('settings')" type="button" 
                             @class([
                                 'w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition-all group cursor-pointer',
-                                'bg-slate-100 text-navy font-bold' => request()->routeIs('admin.site-settings.*'),
-                                'text-slate-700 hover:text-navy hover:bg-slate-100' => !request()->routeIs('admin.site-settings.*'),
+                                'bg-slate-100 text-navy font-bold' => request()->routeIs('admin.site-settings.*', 'admin.job-matching.*', 'admin.entitlements.*'),
+                                'text-slate-700 hover:text-navy hover:bg-slate-100' => !request()->routeIs('admin.site-settings.*', 'admin.job-matching.*', 'admin.entitlements.*'),
                             ])>
                         <div class="flex items-center gap-3">
                             <svg class="w-4 h-4 shrink-0 text-slate-500 group-hover:text-navy" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
@@ -279,6 +279,8 @@
                     </button>
                     <div x-show="openDropdowns.settings && sidebarOpen" x-cloak class="mt-1 pl-9 pr-2 space-y-1 text-xs border-l-2 border-slate-200 ml-5">
                         <a href="{{ route('admin.site-settings.edit') }}" class="block py-1.5 px-2 rounded-lg text-slate-600 hover:text-navy hover:bg-slate-100 font-medium">Branding, Logo & SEO</a>
+                        <a href="{{ route('admin.entitlements.index') }}" @class(['block py-1.5 px-2 rounded-lg font-medium', 'bg-slate-100 text-navy font-bold' => request()->routeIs('admin.entitlements.*'), 'text-slate-600 hover:text-navy hover:bg-slate-100' => ! request()->routeIs('admin.entitlements.*')])>Credits &amp; Entitlements</a>
+                        <a href="{{ route('admin.job-matching.edit') }}" @class(['block py-1.5 px-2 rounded-lg font-medium', 'bg-slate-100 text-navy font-bold' => request()->routeIs('admin.job-matching.*'), 'text-slate-600 hover:text-navy hover:bg-slate-100' => ! request()->routeIs('admin.job-matching.*')])>Job Matching & Apply All</a>
                         <a href="{{ route('admin.control-center.index', ['section' => 'users-permissions', 'view' => 'admin-users']) }}" class="block py-1.5 px-2 rounded-lg text-slate-600 hover:text-navy hover:bg-slate-100 font-medium">Admin Users & Roles</a>
                         <a href="{{ route('admin.control-center.index', ['section' => 'audit-logs', 'view' => 'admin-activity']) }}" class="block py-1.5 px-2 rounded-lg text-slate-600 hover:text-navy hover:bg-slate-100 font-medium">Security & Audit Logs</a>
                     </div>
@@ -323,19 +325,23 @@
                     <div>
                         <h1 class="text-lg font-heading font-bold text-navy leading-tight">
                             {{ $heading ?? $title }}
-                        <div>
+                        </h1>
                     </div>
                 </div>
 
                 {{-- Header Actions --}}
-                <div class="flex items-center gap-4">
+                <div class="flex items-center gap-3">
+                    {{-- Menu search. Kept a sibling of the bell, never a child of
+                         it: nested inside the button, every click on this input
+                         bubbled to the bell and opened the notification panel. --}}
+                    <form method="GET" action="{{ route('admin.dashboard') }}" class="hidden md:block">
+                        <label for="admin-menu-search" class="sr-only">Search menu</label>
+                        <input id="admin-menu-search" name="menu" type="search" placeholder="Search menu" class="form-input w-44 py-1.5 text-xs">
+                    </form>
+
                     {{-- Notification Bell with Live Database Feed & Audio Chimes --}}
                     <div class="relative" x-data="notificationCenter()">
                         <button @click="toggle()" @mouseenter="playChime('system_alert')" type="button" class="relative p-2 rounded-xl text-slate-600 hover:text-navy hover:bg-slate-100 transition-colors cursor-pointer" title="Platform Notifications">
-                        <form method="GET" action="{{ route('admin.dashboard') }}" class="hidden md:block">
-                            <label for="admin-menu-search" class="sr-only">Search menu</label>
-                            <input id="admin-menu-search" name="menu" type="search" placeholder="Search menu" class="form-input w-40 py-1.5 text-xs">
-                        </form>
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>
                             <span x-show="unreadCount > 0" class="absolute top-1 right-1 flex h-4 w-4">
                                 <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>

@@ -1,32 +1,48 @@
-<x-employer-sidebar title="Employer Dashboard">
+<x-employer-shell title="Employer Dashboard">
     <div class="space-y-6">
-        {{-- Welcome & Quick Actions Hero --}}
-        <div class="bg-gradient-to-r from-navy via-primary-900 to-navy text-white rounded-3xl p-6 sm:p-8 shadow-xl relative overflow-hidden">
-            <div class="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-                <div>
-                    <div class="flex items-center gap-2 mb-2">
-                        <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-white/10 text-secondary-300 border border-white/15">
-                            {{ $company->status === 'verified' ? '✓ Verified Employer' : 'Verification Active' }}
-                        </span>
-                        <span class="text-xs text-blue-200">• {{ $company->industry ?? 'Corporate Enterprise' }}</span>
-                    </div>
-                    <h2 class="text-2xl sm:text-3xl font-heading font-extrabold text-white">
-                        Welcome back, {{ auth()->user()->name }}
-                    </h2>
-                    <p class="text-slate-200 text-xs sm:text-sm mt-1 max-w-xl">
-                        Manage your talent pipeline, schedule direct candidate interviews, and issue official employment offers.
-                    </p>
-                </div>
+        {{--
+            The page's own masthead, not a banner.
 
-                <div class="flex flex-wrap items-center gap-3 shrink-0">
-                    <a href="{{ route('employer.jobs.create') }}" class="btn btn-secondary btn-md shadow-lg font-bold text-xs">
-                        <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
-                        <span>Post New Job</span>
-                    </a>
-                    <a href="{{ route('employer.portal', 'candidates') }}" class="btn bg-white/10 hover:bg-white/20 text-white border border-white/20 btn-md text-xs font-bold">
-                        <span>Review Applicants</span>
-                    </a>
-                </div>
+            This was a navy gradient slab with a white heading and two buttons
+            floated on it — the one element on any employer screen that was not
+            white-on-soft-blue, and the thing sir pointed at. It also fought the
+            header directly above it: two dark bars stacked, the second one
+            repeating a greeting the account menu already gives.
+
+            What replaces it is the type itself. The eyebrow carries the two
+            facts the badge carried (verified, industry) at eyebrow weight, the
+            name is set in the display face at page-title size, and the actions
+            sit on the baseline rather than inside a coloured box. Nothing here
+            needs a background to be found.
+
+            Sizes come from the named scale on purpose: every arbitrary
+            `text-[..]` above 13px is missing from the prebuilt bundle and would
+            silently render at the bare h1 size.
+        --}}
+        <div class="flex flex-col md:flex-row md:items-end justify-between gap-5 pb-1">
+            <div class="min-w-0">
+                <p class="text-xs font-bold uppercase tracking-widest mb-2" style="color:#8494A8;">
+                    <span style="color:#18A66A;">{{ $company->status === 'verified' ? 'Verified employer' : 'Verification in progress' }}</span>
+                    &middot; {{ $company->industry ?? 'Recruitment' }}
+                </p>
+
+                <h1 class="font-heading font-bold text-navy text-3xl sm:text-4xl leading-tight">
+                    {{ auth()->user()->name }}
+                </h1>
+
+                <p class="text-sm mt-2 max-w-xl" style="color:#6E829C;">
+                    {{ $company->name }} &mdash; your pipeline, interviews and offers in one place.
+                </p>
+            </div>
+
+            <div class="flex flex-wrap items-center gap-3 shrink-0">
+                <a href="{{ route('employer.jobs.create') }}" class="btn btn-primary btn-md font-bold text-xs">
+                    <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                    <span>Post New Job</span>
+                </a>
+                <a href="{{ route('employer.portal', 'candidates') }}" class="btn btn-outline btn-md text-xs font-bold">
+                    <span>Review Applicants</span>
+                </a>
             </div>
         </div>
 
@@ -192,33 +208,73 @@
                 </div>
             </div>
 
-            {{-- Subscription & Team Overview --}}
+            {{--
+                The plan this company is actually on.
+
+                Every line of this panel used to be a constant: the badge said
+                "Enterprise Pro" — a plan that does not exist in `packages` — the
+                quota said "Unlimited Active Posts", and the AI row said "Active
+                (NLP Engine v2)", which is not the name of anything we run. An
+                employer on Starter, with five vacancies a month, was told they
+                had unlimited posts on a tier we do not sell. That is the same
+                class of invented detail CLAUDE.md keeps a list of, and this one
+                an employer could plan their hiring around.
+
+                It now reads the live subscription and the real ledger balances,
+                and when there is no plan it says so rather than inventing one.
+            --}}
+            @php
+                $activeSubscription = $company->subscriptions()
+                    ->with('package')
+                    ->where('status', 'active')
+                    ->whereDate('expires_at', '>=', today())
+                    ->latest('expires_at')
+                    ->first();
+
+                $entitlements = app(\App\Services\SubscriptionEntitlementService::class);
+                $planBalances = $entitlements->summary($company, 'employer');
+            @endphp
+
             <div class="bg-white rounded-2xl border border-border p-6 shadow-xs space-y-4">
                 <div class="flex items-center justify-between border-b border-border pb-3">
-                    <h3 class="font-bold text-navy text-sm">Corporate Plan & Talent Sourcing</h3>
-                    <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                        Enterprise Pro
-                    </span>
+                    <h3 class="font-bold text-navy text-sm">Your plan</h3>
+                    @if($activeSubscription?->package)
+                        <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                            {{ $activeSubscription->package->name }}
+                        </span>
+                    @else
+                        <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-slate-100 text-slate-600 border border-slate-200">
+                            No plan
+                        </span>
+                    @endif
                 </div>
 
-                <div class="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2 text-xs">
-                    <div class="flex items-center justify-between">
-                        <span class="text-text-muted">Job Posting Quota:</span>
-                        <span class="font-bold text-navy">Unlimited Active Posts</span>
+                @if($activeSubscription)
+                    <div class="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2 text-xs">
+                        @foreach($planBalances as $line)
+                            <div class="flex items-center justify-between gap-3">
+                                <span class="text-text-muted">{{ $line['label'] }}</span>
+                                <span class="font-bold text-navy shrink-0">
+                                    {{ $line['remaining'] === null ? 'Unlimited' : $line['remaining'].' left' }}
+                                </span>
+                            </div>
+                        @endforeach
+
+                        <div class="flex items-center justify-between gap-3 pt-2 border-t border-slate-200">
+                            <span class="text-text-muted">Renews</span>
+                            <span class="font-bold text-navy shrink-0">{{ $activeSubscription->expires_at?->format('d M Y') ?? '—' }}</span>
+                        </div>
                     </div>
-                    <div class="flex items-center justify-between">
-                        <span class="text-text-muted">AI Candidate Scoring:</span>
-                        <span class="font-bold text-emerald-600">Active (NLP Engine v2)</span>
-                    </div>
-                    <div class="flex items-center justify-between">
-                        <span class="text-text-muted">Direct Talent Search:</span>
-                        <span class="font-bold text-navy">Enabled</span>
-                    </div>
-                </div>
+                @else
+                    <p class="text-xs text-text-muted">
+                        This company has no active plan. You still get the monthly free
+                        allowance on every action &mdash; Subscription shows what is left.
+                    </p>
+                @endif
 
                 <div class="pt-2 flex items-center gap-3">
-                    <a href="{{ route('employer.portal', 'candidate-search') }}" class="btn btn-secondary btn-sm flex-1 text-center font-bold text-xs">
-                        Search Candidate Directory
+                    <a href="{{ route('employer.subscription') }}" class="btn btn-secondary btn-sm flex-1 text-center font-bold text-xs">
+                        Subscription &amp; credits
                     </a>
                     <a href="{{ route('employer.portal', 'billing') }}" class="btn btn-outline btn-sm font-bold text-xs">
                         Billing
@@ -227,4 +283,4 @@
             </div>
         </div>
     </div>
-</x-employer-sidebar>
+</x-employer-shell>
