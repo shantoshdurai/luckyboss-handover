@@ -12,9 +12,23 @@
     <script type="application/ld+json">@json(['@context' => 'https://schema.org', '@type' => 'Organization', 'name' => $branding['site_name'] ?? 'Luckyboss Employment Agency Pte. Ltd'])</script>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
-<body class="min-h-screen bg-[#f8fafc] text-text-primary antialiased" x-data="{ 
+<body class="min-h-screen bg-[#f8fafc] text-text-primary antialiased"
+      @resize.window="closeDrawerOnDesktop()"
+      @keydown.escape.window="mobileSidebarOpen = false"
+      x-data="{ 
     sidebarOpen: true, 
     mobileSidebarOpen: false,
+
+    /*
+        Widening the window past `lg` turns the drawer back into a column. If the
+        flag stayed true, the backdrop would go with it — `lg:hidden` removes the
+        overlay — but the flag would still be set, so the next time the window
+        narrowed the drawer would already be open over the page with no way to
+        know why. Reset it on resize.
+    */
+    closeDrawerOnDesktop() {
+        if (window.innerWidth >= 1024) { this.mobileSidebarOpen = false; }
+    },
     openDropdowns: {
         employers: {{ request()->routeIs('admin.companies.*', 'admin.employer-*') ? 'true' : 'false' }},
         candidates: {{ request()->routeIs('admin.candidates.*', 'admin.candidate-*') ? 'true' : 'false' }},
@@ -34,9 +48,41 @@
 }">
     <div class="flex min-h-screen">
         {{-- Desktop Sidebar (Clean White with High-Contrast Slate/Navy Styling) --}}
+        {{--
+            The backdrop for the drawer. Only ever on screen below `lg`, where
+            the sidebar is an overlay rather than a column, and tapping it closes
+            the drawer — which is the gesture everyone tries first.
+
+            Inline background rather than `bg-black/40`: the Tailwind bundle is
+            prebuilt with no Node step, and an opacity utility no view was
+            already using does not exist at runtime. A backdrop that renders
+            transparent is worse than none at all.
+        --}}
+        <div x-show="mobileSidebarOpen" x-cloak
+             @click="mobileSidebarOpen = false"
+             class="fixed inset-0 z-20 lg:hidden"
+             style="background:rgba(3,31,73,.45);"
+             aria-hidden="true"></div>
+
+        {{--
+            Below `lg` this is a drawer, above it a column.
+
+            It used to be `hidden lg:flex` and nothing else, while the ☰ in the
+            top bar toggled `mobileSidebarOpen` — a variable **no element in this
+            file read**. So on any window under 1024px the admin had no
+            navigation at all: the rail was display:none, the button did nothing,
+            and the only way to reach another admin screen was to type the URL.
+
+            The display is bound rather than left to a `max-lg:` variant, because
+            that variant is not in the prebuilt bundle either. Open means `flex`
+            at every width; closed falls back to exactly what it was.
+        --}}
         <aside
-            :class="sidebarOpen ? 'w-64' : 'w-20'"
-            class="hidden lg:flex flex-col fixed inset-y-0 left-0 z-30 bg-white border-r border-border overflow-hidden shadow-xs transition-all duration-200"
+            :class="[
+                sidebarOpen ? 'w-64' : 'w-20',
+                mobileSidebarOpen ? 'flex' : 'hidden lg:flex'
+            ]"
+            class="flex-col fixed inset-y-0 left-0 z-30 bg-white border-r border-border overflow-hidden shadow-xs transition-all duration-200"
         >
             {{-- Admin Sidebar Logo Header --}}
             <div class="flex items-center justify-center h-24 border-b border-slate-200 bg-gradient-to-br from-slate-50 to-white px-3 py-3">
