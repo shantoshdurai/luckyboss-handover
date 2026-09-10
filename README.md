@@ -56,10 +56,29 @@ Three accounts are seeded. **Passwords are sent separately.**
 | Employer | `employer@luckyboss.test` | `/employer` — the hiring agent |
 | Candidate | `candidate@luckyboss.test` | `/job-seeker` — Lucky AI |
 
-Sign in at **/login** for all three. The Job seeker / Employer toggle on that
-page does not apply to the admin — the super admin always lands on `/admin`.
-There is also a dedicated **/admin/login** with no toggle, if you would rather go
-straight there.
+Sign in at **/login** for all three.
+
+### Opening the admin
+
+1. Go to **http://127.0.0.1:8000/login**
+2. Enter `admin@luckyboss.test` and the admin password
+3. **Ignore the "Job seeker / Employer" buttons** — they do not apply to the
+   admin, so leave them as they are
+4. Press **Sign in**
+
+You land on the Admin Dashboard. Everything is in the menu down the left-hand
+side: Employers, Candidates, Job Listings, ATS Pipeline, Subscriptions & Pay,
+AI & APIs, Masters & Feeds, CMS & Blog, and Settings & Branding. Each one expands.
+
+There is also a dedicated **/admin/login** with no Job seeker / Employer buttons
+on it — same form, same result, if you would rather go straight there.
+
+**If you cannot see the left-hand menu**, the browser window is narrower than
+1024px. The menu folds behind the **☰** at the top-left, next to "Admin
+Dashboard"; maximising the window brings the column back.
+
+**If "Sign in" appears to do nothing**, it is the rate limit — five attempts a
+minute. Wait a minute and try again.
 
 ---
 
