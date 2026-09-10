@@ -161,7 +161,10 @@
     </style>
     @stack('head')
 </head>
-<body class="min-h-screen flex flex-col bg-surface antialiased font-sans">
+{{-- `data-layout` is read by the soft navigation below: a page belonging to
+     a different layout must get a real browser load, never a <main> swap.
+     See the guard in navigate(). --}}
+<body data-layout="app" class="min-h-screen flex flex-col bg-surface antialiased font-sans">
     {{-- Top Loading Indicator Bar --}}
     <div id="nav-loading-bar"></div>
 
@@ -453,12 +456,26 @@
             var wantedHash = '';
             try { wantedHash = new URL(url, location.href).hash; } catch (err) {}
 
+            /*
+                Where a fallback should actually land.
+
+                `url` is what we asked for; after a POST that is the form's
+                action, and the server has almost certainly redirected somewhere
+                else by the time we decide we cannot swap. Falling back to `url`
+                sent a successful admin sign-in back to /login as a GET — logged
+                in, but staring at the sign-in form as though nothing had
+                happened. Once the response resolves, this holds where we really
+                ended up.
+            */
+            var landing = url;
+
             fetch(url, init || { credentials: 'same-origin', headers: { 'X-Soft-Nav': '1' } })
                 .then(function (res) {
                     if (!res.ok || res.redirected && new URL(res.url).origin !== location.origin) throw new Error('bad');
                     return res.text().then(function (html) { return { html: html, url: res.url }; });
                 })
                 .then(function (payload) {
+                    landing = payload.url || url;
                     var doc = new DOMParser().parseFromString(payload.html, 'text/html');
                     var nextMain = doc.querySelector('main');
                     var currentMain = document.querySelector('main');
@@ -466,6 +483,28 @@
                     // A response we cannot recognise as one of our pages (a
                     // redirect to sign-in, an error page) gets a real load.
                     if (!nextMain || !currentMain) throw new Error('no main');
+
+                    /*
+                        A page from a different layout also gets a real load, and
+                        this one is not theoretical.
+
+                        The admin is the only area still on its own <html>, with
+                        its own <aside>, its own top bar and its own Alpine root.
+                        Signing in at /admin/login posts through this handler,
+                        which followed the redirect to /admin, found a perfectly
+                        good <main> in it — the check above passes — and swapped
+                        that <main> into the *sign-in page's* body. The admin's
+                        entire chrome was discarded: no rail, no header, no
+                        x-data, and no way to reach another admin screen. A
+                        refresh fixed it, which is what made it look intermittent.
+
+                        Comparing the layout each document declares is enough,
+                        and it catches every future case of this rather than
+                        just the login one.
+                    */
+                    if ((doc.body && doc.body.dataset.layout) !== document.body.dataset.layout) {
+                        throw new Error('layout change');
+                    }
 
                     // Alpine has to be able to wake the new DOM up. If it is not
                     // there, a soft swap would leave every dropdown dead.
@@ -532,7 +571,7 @@
                     busy = false;
                     hide();
                 })
-                .catch(function () { hardNav(url); });
+                .catch(function () { hardNav(landing); });
         }
 
         document.addEventListener('click', function (e) {

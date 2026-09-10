@@ -78,6 +78,47 @@ class AdminNavigationTest extends TestCase
         }
     }
 
+    public function test_the_two_layouts_declare_themselves_so_soft_nav_cannot_mix_them(): void
+    {
+        $admin = $this->admin();
+
+        /*
+            The bug this pins was not a layout bug at all.
+
+            The site's soft navigation swaps only <main>. Signing in at /login
+            posts through that handler, which followed the redirect to /admin,
+            found a perfectly good <main> in it, and swapped that <main> into the
+            *sign-in page's* body — discarding the admin's rail, its top bar and
+            its Alpine root. The admin then had no navigation whatsoever, and a
+            refresh fixed it, which is what made it look intermittent.
+
+            The guard compares the layout each document declares, so both have to
+            carry the attribute or the comparison silently passes.
+        */
+        $this->actingAs($admin)
+            ->get(route('admin.dashboard'))
+            ->assertOk()
+            ->assertSee('data-layout="admin"', false);
+
+        $this->get(route('login'))
+            ->assertOk()
+            ->assertSee('data-layout="app"', false);
+    }
+
+    public function test_the_soft_navigation_refuses_to_swap_across_layouts(): void
+    {
+        $this->seed();
+
+        // The guard itself, and the fallback landing on where the response
+        // actually resolved rather than on the URL that was requested — without
+        // that second part a successful admin sign-in went back to /login as a
+        // GET, logged in but staring at the sign-in form.
+        $this->get(route('login'))
+            ->assertOk()
+            ->assertSee("throw new Error('layout change')", false)
+            ->assertSee('hardNav(landing)', false);
+    }
+
     public function test_a_candidate_cannot_open_the_admin(): void
     {
         $this->seed();

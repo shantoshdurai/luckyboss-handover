@@ -12,7 +12,10 @@
     <script type="application/ld+json">@json(['@context' => 'https://schema.org', '@type' => 'Organization', 'name' => $branding['site_name'] ?? 'Luckyboss Employment Agency Pte. Ltd'])</script>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
-<body class="min-h-screen bg-[#f8fafc] text-text-primary antialiased"
+{{-- The admin is the one area still on its own <html>. `data-layout` is what
+     stops the site's soft navigation from swapping an admin <main> into the
+     public shell — see the guard in layouts/app.blade.php. --}}
+<body data-layout="admin" class="min-h-screen bg-[#f8fafc] text-text-primary antialiased"
       @resize.window="closeDrawerOnDesktop()"
       @keydown.escape.window="mobileSidebarOpen = false"
       x-data="{ 
